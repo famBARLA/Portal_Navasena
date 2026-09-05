@@ -2009,8 +2009,8 @@
             let html = '';
             
             window.masterDeskGroups.forEach(g => {
-                let matchG = g.label.toLowerCase().includes(q);
-                let mems = g.members.filter(m => m.nama.toLowerCase().includes(q));
+                let matchG = String(g.label || '').toLowerCase().includes(q);
+                let mems = g.members.filter(m => String(m.nama || '').toLowerCase().includes(q));
                 
                 if (matchG || mems.length > 0) {
                     let memHtml = '';
@@ -10307,6 +10307,7 @@
                         showToast("✔️ Data Peserta berhasil diperbarui.");
                         closeModal('mod-peserta-add');
                         window.renderPesertaList();
+                        if(typeof renderAcara === 'function') renderAcara();
                     } catch(e) {
                         showToast("❌ Gagal memperbarui data.");
                     } finally {
@@ -10350,6 +10351,7 @@
                     showToast("Pendaftar berhasil ditambahkan.");
                     closeModal('mod-peserta-add');
                     window.renderPesertaList();
+                    if(typeof renderAcara === 'function') renderAcara();
                 } catch(e) {
                     showToast("Gagal menyimpan peserta.");
                 } finally {
@@ -10380,6 +10382,7 @@
                         
                         showToast("Pendaftar dihapus.");
                         window.renderPesertaList();
+                        if(typeof renderAcara === 'function') renderAcara();
                     } catch(e) { showToast("Gagal menghapus."); }
                     finally { window.isProcessingTransaction = false; }
                 });
