@@ -853,6 +853,7 @@
                 }
 
                 if(typeof updateDashboard === 'function') updateDashboard();
+                if(typeof window.checkNotifAspirasi === 'function') window.checkNotifAspirasi();
 
                 if(role === 'anggota' && !localStorage.getItem('nav_user_id') && state.anggota.length > 0) {
                     if(typeof openPhoneAuthLocal === 'function') openPhoneAuthLocal();
@@ -1152,6 +1153,7 @@
             
             // LOGIKA EKSKLUSIF KTA HOLOGRAFIK (PROFIL)
             if (view === 'profil') {
+                if(typeof window.checkNotifAspirasi === 'function') window.checkNotifAspirasi();
                 let role = localStorage.getItem('nav_role');
                 let uid = localStorage.getItem('nav_user_id');
                 
@@ -4408,7 +4410,7 @@
                 <!-- GRUP 1: MANAJEMEN SISTEM (REPOSISI KE ATAS) -->
                 <label style="font-size: 10.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px; display: block; padding-left: 16px; letter-spacing: 0.5px;">Manajemen Sistem</label>
                 <div class="ios-group no-select" style="border-radius: 16px; margin-bottom: 24px;">
-                    <button class="ios-item" onclick="openModal('mod-settings'); if(typeof window.checkNotifAspirasi === 'function') window.checkNotifAspirasi();">
+                    <button class="ios-item" onclick="openModal('mod-settings')">
 
                         <div class="ios-icon" style="background: transparent; color: #334155;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
                         <span style="flex: 1;">Konfigurasi Sistem</span>
@@ -11179,6 +11181,7 @@
                             if (typeof updateDashboard === 'function') updateDashboard();
                             if (typeof renderTrxList === 'function' && currView === 'trx') renderTrxList(false);
                             if (typeof renderIuranGrid === 'function' && currView === 'iuran') renderIuranGrid();
+                            if (typeof window.checkNotifAspirasi === 'function') window.checkNotifAspirasi();
                         }
                         return true; // SURGICAL FIX: Mengirim sinyal SUKSES ke Login Gate
                     } else { throw new Error("Data dari Cloud kosong atau format salah."); }
