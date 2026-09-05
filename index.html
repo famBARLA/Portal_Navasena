@@ -2351,7 +2351,7 @@
             txt += `🟢 Pemasukan Bulan Ini: Rp ${fmtRp(inAmt)}\n`;
             txt += `🔴 Pengeluaran Bulan Ini: Rp ${fmtRp(outAmt)}\n`;
             txt += `☑️ *TOTAL SALDO KAS: ${document.getElementById('dash-saldo').innerText}*\n\n`;
-            txt += `_Pesan dikirim dari Aplikasi Portal NAVASENA_`;
+            txt += `> _Dikirim via Portal NAVASENA_`;
             
             openWhatsAppBusiness('', encodeURIComponent(txt));
         }
@@ -4408,7 +4408,8 @@
                 <!-- GRUP 1: MANAJEMEN SISTEM (REPOSISI KE ATAS) -->
                 <label style="font-size: 10.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px; display: block; padding-left: 16px; letter-spacing: 0.5px;">Manajemen Sistem</label>
                 <div class="ios-group no-select" style="border-radius: 16px; margin-bottom: 24px;">
-                    <button class="ios-item" onclick="openModal('mod-settings')">
+                    <button class="ios-item" onclick="openModal('mod-settings'); if(typeof window.checkNotifAspirasi === 'function') window.checkNotifAspirasi();">
+
                         <div class="ios-icon" style="background: transparent; color: #334155;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
                         <span style="flex: 1;">Konfigurasi Sistem</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -4423,6 +4424,7 @@
                     <button class="ios-item" onclick="openInboxAspirasi()">
                         <div class="ios-icon" style="background: transparent; color: #334155;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
                         <span style="flex: 1;">Kotak Pesan / Aspirasi</span>
+                        <span id="badge-aspirasi" style="display:none; background:var(--danger); color:white; font-size:10px; font-weight:900; padding:3px 8px; border-radius:10px; margin-right:8px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);">0 BARU</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                 </div>
@@ -4463,7 +4465,7 @@
                 <div class="ios-group no-select" style="border-radius: 16px; margin-bottom: 24px;">
                     <button class="ios-item" onclick="openUndanganModal()">
                         <div class="ios-icon" style="background: transparent; color: #334155;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg></div>
-                        <span style="flex: 1;">Buat Undangan (WhatsApp)</span>
+                        <span style="flex: 1;">Buat Pengumuman / Undangan (WA)</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                 </div>
@@ -4606,10 +4608,23 @@
              ========================================================= -->
         <script id="module-virtual-ledger">
             window.validateAlloc = function() {
-                let keg = parseInt(document.getElementById('set-alloc-keg').value) || 0;
-                let sos = parseInt(document.getElementById('set-alloc-sos').value) || 0;
-                let opr = parseInt(document.getElementById('set-alloc-opr').value) || 0;
-                let dar = parseInt(document.getElementById('set-alloc-dar').value) || 0;
+                // [SURGICAL FIX]: The Absolute Zero Negative Extractor (Mencegah Bypass Input Negatif & Not-a-Number)
+                let kegEl = document.getElementById('set-alloc-keg');
+                let sosEl = document.getElementById('set-alloc-sos');
+                let oprEl = document.getElementById('set-alloc-opr');
+                let darEl = document.getElementById('set-alloc-dar');
+                
+                let keg = Math.abs(parseInt(kegEl.value, 10)) || 0;
+                let sos = Math.abs(parseInt(sosEl.value, 10)) || 0;
+                let opr = Math.abs(parseInt(oprEl.value, 10)) || 0;
+                let dar = Math.abs(parseInt(darEl.value, 10)) || 0;
+                
+                // Real-time DOM Sanitizer (Menghapus tanda minus '-' atau 'e' langsung di mata user)
+                if (kegEl.value !== String(keg)) kegEl.value = keg;
+                if (sosEl.value !== String(sos)) sosEl.value = sos;
+                if (oprEl.value !== String(opr)) oprEl.value = opr;
+                if (darEl.value !== String(dar)) darEl.value = dar;
+
                 let total = keg + sos + opr + dar;
                 
                 let ui = document.getElementById('alloc-validator-ui');
@@ -5217,7 +5232,7 @@
                         </h3>
                         <button class="close-modal" style="position: static;" onclick="closeModal('mod-undangan')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                     </div>
-                    <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 6px;">Otomatis membuat teks WhatsApp untuk grup.</div>
+                    <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 6px;">Otomatis membuat undangan untuk WhatsApp grup.</div>
                 </div>
                 
                 <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
@@ -5272,7 +5287,7 @@
                     </div>
 
                     <button class="btn no-select" style="width: 100%; padding: 16px; background: #25D366; color: white; font-size: 14px; font-weight: 900; box-shadow: 0 10px 25px -5px rgba(37, 211, 102, 0.4);" onclick="generateUndanganWA()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 8px;"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg> GENERATE & KIRIM VIA WA
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 8px;"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg> KIRIM VIA WHATSAPP
                     </button>
                 </div>
             </div>
@@ -6525,14 +6540,7 @@
                     }
                 }
 
-                let msgWarning = "";
-                if (isCustomDompet && !isDompetShared && sisaDompet > 0) {
-                    msgWarning = "Program ini akan dipindah ke <b>Riwayat Arsip</b>. Karena memakai Dompet Khusus, <b>SISA SALDO RP " + fmtRp(sisaDompet) + " AKAN DI-SWEEP (DIKEMBALIKAN OTOMATIS) KE KAS UTAMA</b> agar uang tidak tertahan.";
-                } else if (isCustomDompet && isDompetShared) {
-                    msgWarning = "Program ini akan dipindah ke <b>Riwayat Arsip</b>. Dompet Kas acara tetap dipertahankan karena sedang dipakai oleh program lain.";
-                } else {
-                    msgWarning = "Program ini akan dipindah ke <b>Riwayat Arsip</b> agar beranda tetap ringan. Data mutasinya tetap aman dan terekap di Excel.";
-                }
+                let msgWarning = "Program ini akan dipindah ke <b>Riwayat Arsip</b> agar beranda tetap ringan. Data mutasinya tetap aman dan terekap di Excel.";
 
                 openConfirm("SELESAI (Arsip Program)", msgWarning, "warning", async () => {
                     let idx = state.event.findIndex(e => e.id === id);
@@ -6542,24 +6550,7 @@
                             let trxsToSave = [];
                             let dompetToArchive = null;
 
-                            // THE AUTO-SWEEP PROTOCOL
-                            if (isCustomDompet && !isDompetShared) {
-                                if (sisaDompet > 0) {
-                                    let tsNow = Date.now();
-                                    let yr = new Date().getFullYear();
-                                    // Mutasi Keluar dari Dompet Khusus
-                                    let trxOut = { id: genID('TX'), ts: tsNow, tipe: 'keluar', nom_awal: sisaDompet, nom_final: sisaDompet, ket: `Auto-Sweep Sisa Kas Acara: ${evData.nama}`, kat: 'Transfer Internal', status: 'lunas', id_event: id, id_anggota: '', id_dompet: idDompet, is_deleted: false, year: yr };
-                                    // Mutasi Masuk ke Kas Utama
-                                    let trxIn = { id: genID('TX'), ts: tsNow + 1, tipe: 'masuk', nom_awal: sisaDompet, nom_final: sisaDompet, ket: `Terima Sweep Sisa Kas Acara: ${evData.nama}`, kat: 'Transfer Internal', status: 'lunas', id_event: id, id_anggota: '', id_dompet: 'DP-UTAMA', is_deleted: false, year: yr };
-                                    trxsToSave.push(trxOut, trxIn);
-                                }
-
-                                // Matikan dompet khusus tersebut
-                                let dIdx = state.dompet.findIndex(d => d.id === idDompet);
-                                if (dIdx > -1) {
-                                    dompetToArchive = {...state.dompet[dIdx], status: 'arsip'};
-                                }
-                            }
+                            // [SURGICAL FIX]: AUTO-SWEEP DIHAPUS MUTLAK. Dompet Khusus adalah representasi Uang Fisik/Rekening Bank permanen yang tidak boleh disweep dan diarsipkan otomatis hanya karena program usai.
 
                             let ev_update = {...state.event[idx], status: 'arsip'};
 
@@ -6610,17 +6601,14 @@
                 try {
 
                     let targetEvent = state.event.find(e => e.id === id);
-                    let orphanDompetId = (targetEvent && targetEvent.id_dompet_default && targetEvent.id_dompet_default !== 'DP-UTAMA') ? targetEvent.id_dompet_default : null;
                     
-                    // SURGICAL FIX: Evaluasi keterikatan Dompet Custom SEBELUM event dihapus dari state.
-                    let isDompetStillUsed = state.event.some(e => e.id !== id && e.id_dompet_default === orphanDompetId);
-                    let safeOrphanId = isDompetStillUsed ? null : orphanDompetId;
+                    // [SURGICAL FIX]: DOMPET CUSTOM DIKECUALIKAN DARI PENGHAPUSAN
+                    // Dompet Custom (Selain Kas Utama) adalah entitas global. Dilarang dihapus otomatis saat event dimusnahkan.
+                    // Dompet Custom hanya boleh dihapus lewat menu Pengaturan Dompet jika sudah benar-benar kosong.
+                    // Hanya Dompet PJ (is_pj: true) yang murni milik event ini yang boleh ikut dimusnahkan.
 
                     let dompetPjIds = state.dompet.filter(d => d.id_event === id && d.is_pj).map(d => d.id);
-                    // HANYA tarik transaksi dompet custom jika dompet tersebut benar-benar yatim piatu (tidak dipakai event lain).
-                    if (safeOrphanId) dompetPjIds.push(safeOrphanId);
-                    
-                    let dompetToDelete = state.dompet.filter(d => (d.id_event === id && d.is_pj) || d.id === safeOrphanId);
+                    let dompetToDelete = state.dompet.filter(d => d.id_event === id && d.is_pj);
 
                     // SURGICAL FIX: JIT DB Connection Healer (Mencegah Deadlock Jika OS Menidurkan Service Worker)
                     try { idb.transaction(['event', 'trx', 'dompet'], 'readonly'); } catch(err) { await initDB(); }
@@ -6694,11 +6682,12 @@
                 if(isKiosk) return showToast("DITOLAK: Sistem Terkunci dalam Mode Audit.");
                 let newIuran = getRawRp(document.getElementById('set-iuran-nom').value);
                 
-                let keg = parseInt(document.getElementById('set-alloc-keg').value) || 0;
-                let sos = parseInt(document.getElementById('set-alloc-sos').value) || 0;
-                let opr = parseInt(document.getElementById('set-alloc-opr').value) || 0;
-                let dar = parseInt(document.getElementById('set-alloc-dar').value) || 0;
-                if ((keg + sos + opr + dar) !== 100) return showToast("GAGAL: Total Alokasi Persentase WAJIB tepat 100%!");
+                // [SURGICAL FIX]: Backend-Level Form Validation (Gatekeeper terakhir sebelum ditanam di memori DB)
+                let keg = Math.abs(parseInt(document.getElementById('set-alloc-keg').value, 10)) || 0;
+                let sos = Math.abs(parseInt(document.getElementById('set-alloc-sos').value, 10)) || 0;
+                let opr = Math.abs(parseInt(document.getElementById('set-alloc-opr').value, 10)) || 0;
+                let dar = Math.abs(parseInt(document.getElementById('set-alloc-dar').value, 10)) || 0;
+                if ((keg + sos + opr + dar) !== 100) return showToast("GAGAL: Total Alokasi Persentase WAJIB tepat 100% (Tidak boleh ada minus/huruf)!");
 
                 // [SURGICAL FIX]: BOM WAKTU RETROACTIVE INFLATION SHIELD
                 let old_keg = parseInt(getSetting('alloc_keg', 40), 10);
@@ -6908,17 +6897,40 @@
                         }
                     }
 
-                    // PROTEKSI ANTI-DEFISIT SAAT PEMULIHAN PENGELUARAN
-                    if (targetTrx.tipe === 'keluar' && targetTrx.status !== 'talangan') {
-                        let dIn = 0, dOut = 0, dPend = 0;
-                        let idDompet = targetTrx.id_dompet || 'DP-UTAMA';
-                        state.trx.filter(t => !t.is_deleted && (t.id_dompet === idDompet || (!t.id_dompet && idDompet === 'DP-UTAMA'))).forEach(t => {
-                            if(t.tipe === 'masuk' || t.tipe === 'iuran') dIn += t.nom_final;
-                            if(t.tipe === 'keluar') { if(t.status === 'pending') dPend += t.nom_awal; else dOut += t.nom_final; }
-                        });
-                        let currentSaldoDompet = dIn - dOut - dPend;
-                        let danaDibutuhkan = targetTrx.status === 'pending' ? targetTrx.nom_awal : targetTrx.nom_final;
-                        if (danaDibutuhkan > currentSaldoDompet) return showToast(`Gagal: Saldo dompet tidak cukup untuk memulihkan (Kurang Rp ${fmtRp(danaDibutuhkan - currentSaldoDompet)})!`);
+                    // PROTEKSI ANTI-DEFISIT SAAT PEMULIHAN PENGELUARAN (DOUBLE-ENTRY SHIELD)
+                    let checkTrxList = [targetTrx];
+
+                    // PRE-CHECK PAIR UNTUK TRANSFER INTERNAL (UANG MUKA)
+                    if (targetTrx.kat === 'Transfer Internal' && targetTrx.tipe === 'masuk' && String(targetTrx.ket).startsWith('Terima dari Kas Induk:')) {
+                        let prePairIdx = state.trx.findIndex(x => x.kat === 'Uang Muka Kegiatan' && x.tipe === 'keluar' && x.ts === targetTrx.ts - 1 && x.is_deleted);
+                        if (prePairIdx > -1) checkTrxList.push(state.trx[prePairIdx]);
+                    }
+
+                    for (let cTrx of checkTrxList) {
+                        if (cTrx.tipe === 'keluar' && cTrx.status !== 'talangan') {
+                            let dIn = 0, dOut = 0, dPend = 0;
+                            let idDompet = cTrx.id_dompet || 'DP-UTAMA';
+                            state.trx.filter(t => !t.is_deleted && (t.id_dompet === idDompet || (!t.id_dompet && idDompet === 'DP-UTAMA'))).forEach(t => {
+                                if(t.tipe === 'masuk' || t.tipe === 'iuran') dIn += t.nom_final;
+                                if(t.tipe === 'keluar') { if(t.status === 'pending') dPend += t.nom_awal; else dOut += t.nom_final; }
+                            });
+                            let currentSaldoDompet = dIn - dOut - dPend;
+                            let danaDibutuhkan = cTrx.status === 'pending' ? cTrx.nom_awal : cTrx.nom_final;
+                            if (danaDibutuhkan > currentSaldoDompet) {
+                                return showToast(`Gagal: Saldo dompet tidak cukup untuk memulihkan (Kurang Rp ${fmtRp(danaDibutuhkan - currentSaldoDompet)})!`);
+                            }
+                        }
+                    }
+
+                    // PROTEKSI OVERFLOW PIUTANG PESERTA (ANTI-MINUS DEBT SHIELD)
+                    if (targetTrx.tipe === 'masuk' && targetTrx.kat === 'Pembayaran Program' && String(targetTrx.ket).includes('[ID:PST-')) {
+                        let matchId = String(targetTrx.ket).match(/\[ID:(PST-[^\]]+)\]/);
+                        if (matchId && matchId[1]) {
+                            let pstCek = state.trx.find(x => x.id === matchId[1]);
+                            if (pstCek && (pstCek.nom_final + targetTrx.nom_final > pstCek.nom_awal)) {
+                                return showToast("TOLAK (OVERFLOW PROTECTION): Tagihan peserta sudah dilunasi oleh transaksi lain. Pemulihan ini akan menyebabkan kelebihan bayar!");
+                            }
+                        }
                     }
 
                     isProcessingTransaction = true;
@@ -7471,6 +7483,28 @@
                 finally { if (btn) { btn.disabled = false; btn.innerText = originalText; } }
             }
 
+            // [SURGICAL FIX] Fungsi Global Pengecek Lencana Notifikasi Pesan
+            window.checkNotifAspirasi = async function() {
+                try {
+                    try { idb.transaction('aspirasi', 'readonly'); } catch(err) { await initDB(); }
+                    const tx = idb.transaction('aspirasi', 'readonly');
+                    const req = tx.objectStore('aspirasi').getAll();
+                    req.onsuccess = () => {
+                        let data = req.result || [];
+                        let unreadCount = data.filter(p => p.status === 'UNREAD').length;
+                        let badge = document.getElementById('badge-aspirasi');
+                        if (badge) {
+                            if (unreadCount > 0) {
+                                badge.style.display = 'inline-block';
+                                badge.innerText = unreadCount + ' BARU';
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                        }
+                    };
+                } catch(e) {}
+            };
+
             async function openInboxAspirasi() {
                 if(isKiosk) return showToast("DITOLAK: Sistem Terkunci dalam Mode Audit.");
                 try {
@@ -7487,16 +7521,35 @@
                         html = '<div class="no-select" style="text-align:center; font-size:12px; color:var(--text-muted); padding:32px 20px; border: 1.5px dashed var(--border); border-radius: 12px;">Kotak masuk kosong.<br><br><b style="color:var(--primary);">Tips:</b> Tekan tombol <b>LOAD (Awan)</b> di Menu Sistem terlebih dahulu untuk menarik pesan baru dari Server.</div>';
                     } else {
                         dataPesan.sort((a,b) => b.id.localeCompare(a.id)); 
+                        
+                        // [SURGICAL FIX] Auto-Read & Update DB Protocol
+                        let hasUnread = dataPesan.some(p => p.status === 'UNREAD');
+                        let txWrite = hasUnread ? idb.transaction('aspirasi', 'readwrite') : null;
+                        
                         dataPesan.forEach(p => {
+                            let isBaru = p.status === 'UNREAD';
+                            let badgeBaru = isBaru ? `<span style="background:var(--danger); color:white; padding:2px 6px; border-radius:4px; margin-left:6px; font-size:8.5px; border: 1px solid #FECACA;">BARU</span>` : '';
+                            
                             html += `
-                            <div style="background:var(--surface); border:1.5px solid #FECDD3; border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow-sm);">
+                            <div style="background:var(--surface); border:1.5px solid ${isBaru ? 'var(--danger)' : '#FECDD3'}; border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
+                                ${isBaru ? '<div style="position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--danger);"></div>' : ''}
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                    <div style="font-size:10px; font-weight:900; color:#BE123C; background:#FFF0F2; padding:4px 8px; border-radius:6px; letter-spacing:0.5px;">${esc(p.role).toUpperCase()}</div>
+                                    <div style="font-size:10px; font-weight:900; color:#BE123C; background:#FFF0F2; padding:4px 8px; border-radius:6px; letter-spacing:0.5px; display:flex; align-items:center;">${esc(p.role).toUpperCase()} ${badgeBaru}</div>
                                     <div style="font-size:10px; color:var(--text-muted); font-weight:700;">${esc(p.ts)}</div>
                                 </div>
                                 <div style="font-size:13px; font-weight:700; color:var(--text-main); line-height:1.6;">"${esc(p.pesan)}"</div>
                             </div>`;
+                            
+                            // Ubah state di Database
+                            if (isBaru && txWrite) {
+                                p.status = 'READ';
+                                txWrite.objectStore('aspirasi').put(p);
+                            }
                         });
+                        
+                        // Sembunyikan lencana segera setelah kotak masuk terbuka
+                        let badgeUI = document.getElementById('badge-aspirasi');
+                        if(badgeUI) badgeUI.style.display = 'none';
                     }
                     document.getElementById('inbox-list').innerHTML = html;
                     openModal('mod-inbox');
@@ -7831,12 +7884,9 @@
                         state.event = state.event.filter(e => !evToDel.some(del => del.id === e.id));
                         
                         // SURGICAL FIX: Anihilasi Dompet PJ Yatim Piatu (Mencegah Phantom Wallet Leak & Shared Wallet Corruption)
-                        let survivingEvents = state.event.filter(e => !evToDel.some(del => del.id === e.id));
+                        // [HUKUM MUTLAK]: Dompet Custom/Global HARAM dihapus otomatis. Hanya Dompet PJ (is_pj: true) yang ikut hancur.
                         let dompetPjToDel = state.dompet.filter(d => {
-                            let isPjOrphan = d.is_pj && evToDel.some(e => e.id === d.id_event);
-                            let isCustomDompetToPurge = evToDel.some(e => e.id_dompet_default === d.id && d.id !== 'DP-UTAMA');
-                            let isStillUsedBySurvivors = survivingEvents.some(se => se.id_dompet_default === d.id);
-                            return isPjOrphan || (isCustomDompetToPurge && !isStillUsedBySurvivors);
+                            return d.is_pj && evToDel.some(e => e.id === d.id_event);
                         });
                         dompetPjToDel.forEach(d => tx.objectStore('dompet').delete(d.id));
                         state.dompet = state.dompet.filter(d => !dompetPjToDel.some(del => del.id === d.id));
@@ -9344,6 +9394,11 @@
                 let id = document.getElementById('set-id').value;
                 let idx = state.trx.findIndex(x => x.id === id);
                 if (idx === -1) return;
+
+                // PROTEKSI MUTLAK: Cegah Eksekusi Ganda (Double-Settlement Race Condition)
+                if (state.trx[idx].status === 'lunas') {
+                    return showToast("TOLAK: Transaksi Uang Muka/Talangan ini sudah diselesaikan sebelumnya!");
+                }
                 
                 let final = getRawRp(document.getElementById('set-final').value);
                 if(final < 0 || document.getElementById('set-final').value === '') return showToast("Masukkan total aktual pembelanjaan sesuai nota.");
@@ -11876,12 +11931,9 @@
 
             window.openUndanganWaktuSelect = function() {
                 let opts = [
-                    {label: '18:30 WIB - Selesai', value: '18:30 WIB - Selesai'},
-                    {label: '19:00 WIB - Selesai', value: '19:00 WIB - Selesai'},
                     {label: '19:30 WIB - Selesai', value: '19:30 WIB - Selesai'},
                     {label: '20:00 WIB - Selesai', value: '20:00 WIB - Selesai'},
                     {label: '08:00 WIB - Selesai', value: '08:00 WIB - Selesai'},
-                    {label: '09:00 WIB - Selesai', value: '09:00 WIB - Selesai'},
                     {label: '+ Ketik Manual...', value: 'MANUAL'}
                 ];
 
@@ -11951,16 +12003,16 @@
                 let blnArr = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                 let tglFormat = `${hariArr[dt.getDay()]}, ${dt.getDate()} ${blnArr[dt.getMonth()]} ${dt.getFullYear()}`;
 
-                let waText = `📢 *UNDANGAN ${tema.toUpperCase()}*\n\n`;
+                let waText = `> *PENGUMUMAN!*\n\n*${tema.toUpperCase()}*\n\n`;
                 waText += `Assalamualaikum Wr. Wb.\n`;
                 waText += `Mengharap kehadiran rekan-rekan pemuda-pemudi NAVASENA pada:\n\n`;
-                waText += `🗓️ *Hari/Tgl:* ${tglFormat}\n`;
-                waText += `⏰ *Waktu:* ${waktu}\n`;
-                waText += `📍 *Tempat:* ${tempat}\n`;
-                if (pakaian) waText += `👕 *Pakaian:* ${pakaian}\n`;
+                waText += `*Hari/Tgl:* ${tglFormat}\n`;
+                waText += `*Waktu    :* ${waktu}\n`;
+                waText += `*Tempat  :* ${tempat}\n`;
+                if (pakaian) waText += `*Pakaian :* ${pakaian}\n\n`;
                 
                 // Agenda dibuat Opsional, jika diisi baru dicetak ke WA
-                if (agenda) waText += `📌 *Agenda:* ${agenda}\n\n`;
+                if (agenda) waText += `📌 *AGENDA*\n ${agenda}\n\n`;
                 else waText += `\n`; // Penyeimbang jarak jika agenda kosong
                 
                 if (catatan) waText += `*Catatan:* _${catatan}_\n\n`;
@@ -12037,7 +12089,7 @@
                 
                 // SECURITY SHIELD: Hapus jejak input sensitif yang tertinggal saat Kiosk ditinggalkan
                 let pinInp = document.getElementById('kiosk-pin'); if(pinInp) pinInp.value = '';
-                let aspInp = document.getElementById('inp-aspirasi'); if(aspInp) aspInp.value = '';
+                // [SURGICAL FIX]: Pemusnah teks Aspirasi (aspInp.value = '') DIBUNUH dari sini agar teks warga yang sedang mengetik tidak hilang saat layar idle!
                 
                 let s1 = document.getElementById('bb-slide-1'); let s2 = document.getElementById('bb-slide-2');
                 
