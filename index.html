@@ -1479,11 +1479,11 @@
                 if (customMsg && customMsg.trim() !== '') {
                     // [OVERRIDE MODE ACTIVATE] Matikan mesin MVP & Donasi untuk hemat RAM HP
                     // Lakukan repetisi string agar pengumuman memenuhi layar melintas
-                    let singleMsg = `<span style="margin-right: 60px;"><span style="color: #EF4444; font-weight: 900; margin-right: 8px; letter-spacing: 1px;">[🚨 INFO NAVASENA]</span><span style="color: #FFFFFF; font-weight: 800;">${esc(customMsg)}</span></span>`;
+                    let singleMsg = `<span style="margin-right: 60px;"><span style="color: #EF4444; font-weight: 900; margin-right: 8px; letter-spacing: 1px;">[🚨 INFO <span class="font-nasa" style="font-size: 1.25em; letter-spacing: 1px;">NAVASENA</span>]</span><span style="color: #FFFFFF; font-weight: 800;">${esc(customMsg)}</span></span>`;
                     generatedHtml = singleMsg.repeat(4); // Menyimpan ke penampung Virtual DOM
                 } else {
-                    // [AUTO-PILOT MODE] Nyalakan mesin pencari Donasi dan MVP
 
+                    // [AUTO-PILOT MODE] Nyalakan mesin pencari Donasi dan MVP
                     // 1. Ekstraksi Data Donasi & Sponsor (Top 10) - THE EXCLUSION PROTOCOL
                     let donasiTrxTicker = state.trx.filter(t => !t.is_deleted && t.tipe === 'masuk' && 
                         (String(t.kat).toLowerCase().includes('donasi') || String(t.kat).toLowerCase().includes('sponsor')) &&
@@ -1530,7 +1530,7 @@
                         if (mvpArr[i]) fusionHtml += mvpArr[i];
                     }
 
-                    generatedHtml = fusionHtml || '<span style="color: #94A3B8; font-weight: 800;">[BELUM ADA INFORMASI, DONASI ATAU MVP ANGGOTA NAVASENA]</span>';
+                    generatedHtml = fusionHtml || '<span style="color: #94A3B8; font-weight: 800;">[BELUM ADA INFORMASI, DONASI ATAU MVP ANGGOTA <span class="font-nasa" style="font-size: 1.25em; letter-spacing: 1px;">NAVASENA</span>]</span>';
                 }
                 
                 // [SURGICAL FIX]: CONSTANT SPEED MATRIX (Ticker Auto-Pilot) dengan DOM Jitter Protection
@@ -1682,7 +1682,7 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                             </div>
                             <div>
-                                <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; letter-spacing: 0.5px;">Pasukan NAVASENA</div>
+                                <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; letter-spacing: 0.5px;">Pasukan <span class="font-nasa" style="font-size: 1.25em; letter-spacing: 0.5px;">NAVASENA</span></div>
                                 <div style="font-size:16px; font-weight:900; color:var(--text-main); letter-spacing: -0.5px;">${sdm} Anggota Terdaftar</div>
                             </div>
                         </div>
@@ -7546,6 +7546,15 @@
                                 txWrite.objectStore('aspirasi').put(p);
                             }
                         });
+
+                        // [OMNI-SYNC PROTECTOR]: Beri tahu sistem bahwa status pesan lokal telah dibaca, lalu kunci statusnya ke Server!
+                        if (hasUnread) {
+                            localStorage.setItem('nav_unsynced', 'true');
+                            if (navigator.onLine && typeof syncToCloud === 'function') {
+                                setTimeout(() => syncToCloud(true), 1500); // Trigger upload siluman di belakang layar
+                            }
+                        }
+
                         
                         // Sembunyikan lencana segera setelah kotak masuk terbuka
                         let badgeUI = document.getElementById('badge-aspirasi');
@@ -8217,8 +8226,8 @@
                                     <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12.5px; color: var(--text-main); line-height: 1.5;">
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="padding-top: 2px;"><div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 10px; border: 1.5px solid var(--primary);">N</div></div>
-                                            <div><b>[KLIK] Ganti Logo:</b> Sentuh avatar bundar "LOGO NAVASENA" di atas untuk mengganti logo organisasi (Maks 5MB).</div>
-                                        </div>                                                                         
+                                            <div><b>[KLIK] Ganti Logo:</b> Sentuh avatar bundar "LOGO <span class="font-nasa" style="font-size: 1.25em;">NAVASENA</span>" di atas untuk mengganti logo organisasi (Maks 5MB).</div>
+                                        </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: #334155; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
                                             <div><b>[KLIK] Konfigurasi Sistem:</b> Mengatur <i>Running Text</i>, Nominal Tagihan Kas Bulanan, Ubah PIN, dan Buat Dompet Baru.</div>
@@ -8564,7 +8573,7 @@
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: var(--text-muted); padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-                                            <div><b>[KLIK] Baris Nama Pemuda:</b> Membongkar kalender 12 bulan. Warga bisa mengawasi kedisiplinan anggota NAVASENA dengan melihat warna (Hijau, Kuning & Merah).</div>
+                                            <div><b>[KLIK] Baris Nama Pemuda:</b> Membongkar kalender 12 bulan. Warga bisa mengawasi kedisiplinan anggota <span class="font-nasa" style="font-size: 1.25em;">NAVASENA</span> dengan melihat warna (Hijau, Kuning & Merah).</div>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 18px; height: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
@@ -10032,7 +10041,7 @@
                                 </div>
                                 <div style="flex: 1; min-width: 0;">
                                     <div style="font-size: 12px; font-weight: 900; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Iuran Wajib</div>
-                                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Anggota NAVASENA</div>
+                                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Anggota <span class="font-nasa" style="font-size: 1.25em;">NAVASENA</span></div>
                                 </div>
                             </div>
                             <div style="font-size: 14px; font-weight: 900; color: #2563EB; flex-shrink: 0; white-space: nowrap; word-break: keep-all; min-width: max-content; text-align: right;">Rp&nbsp;${fmtRp(tIuran)}</div>
@@ -10105,7 +10114,7 @@
                     }
 
                 } else if (tipe === 'pasukan') {
-                    titleEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> <span style="color:#D97706;">DAFTAR PASUKAN NAVASENA</span>`;
+                    titleEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> <span style="color:#D97706;">DAFTAR PASUKAN <span class="font-nasa" style="font-size: 1.25em; letter-spacing: 0.5px;">NAVASENA</span></span>`;
                     
                     let sortedAnggota = [...state.anggota].sort((a,b) => (b.xp_total || 0) - (a.xp_total || 0));
                     
