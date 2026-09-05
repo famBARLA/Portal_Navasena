@@ -8148,7 +8148,7 @@
                                             <div><b>[KLIK] Baris Nama (Heatmap):</b> Sentuh nama anggota untuk membongkar kalender. Klik langsung pada kotak bulan yang kosong/merah untuk menerima uang Iuran secara instan.</div>
                                         </div>                                                                               
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 18px; height: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
+                                            <div style="padding-top: 0;"><div class="tut-anim-rank" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
                                             <div><b>[KLIK] Hologram KTA 3D:</b> Sentuh perisai pangkat di kiri nama anggota untuk membuka KTA E-Sports (*Warrior - Mythic*) digital mereka.</div>
                                         </div>
                                     </div>
@@ -8378,7 +8378,7 @@
                                             <div><b>[KLIK] Baris Nama:</b> Sentuh nama untuk membongkar matriks kalender disiplin 12 bulan.</div>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 18px; height: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
+                                            <div style="padding-top: 0;"><div class="tut-anim-rank" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
                                             <div><b>[KLIK] Hologram KTA 3D:</b> Sentuh perisai di kiri nama Anda. KTA Digital akan berputar (<i>Flip</i>) menampilkan Progress Bar XP <i>Warrior - Mythic Glory</i>.</div>
                                         </div>
                                     </div>
@@ -8576,7 +8576,7 @@
                                             <div><b>[KLIK] Baris Nama Pemuda:</b> Membongkar kalender 12 bulan. Warga bisa mengawasi kedisiplinan anggota <span class="font-nasa" style="font-size: 1.25em;">NAVASENA</span> dengan melihat warna (Hijau, Kuning & Merah).</div>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 18px; height: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
+                                            <div style="padding-top: 0;"><div class="tut-anim-rank" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
                                             <div><b>[KLIK] Lencana Perisai Pangkat:</b> Sentuh perisai di kiri nama pemuda untuk melihat seberapa besar level apresiasi sistem terhadap kontribusi finansial mereka.</div>
                                         </div>
                                     </div>
@@ -11083,7 +11083,9 @@
                     if (resData.status === "Sukses" || resData.status === "sukses" || resData.status === "queued") {
                         
                         // GHOST OUTBOX SELF-DESTRUCT (Anihilasi Pesan Jika Sukses)
-                        if (localAspirasi && localAspirasi.length > 0) {
+                        // [SURGICAL FIX]: Cegah pemusnahan pesan lokal jika sinkronisasi dilakukan oleh Admin (isAuthMaster = true).
+                        // Hanya Warga (Guest) yang pesannya boleh dimusnahkan dari memori setelah sukses terkirim (Ghost Outbox murni).
+                        if (!isAuthMaster && localAspirasi && localAspirasi.length > 0) {
                             try {
                                 let txAsp = idb.transaction('aspirasi', 'readwrite');
                                 let storeAsp = txAsp.objectStore('aspirasi');
