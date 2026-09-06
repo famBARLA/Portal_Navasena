@@ -11642,12 +11642,10 @@
                 showToast("Memproses Cetak Laporan LPJ.");
                 closeModal('mod-settings'); document.body.classList.remove('modal-open');
                 
-                window.onafterprint = function() {
-                    setTimeout(() => { document.getElementById('print-lpj-container').innerHTML = ''; }, 3000);
-                    window.onafterprint = null;
-                };
-                
+                // [SURGICAL FIX]: Event 'onafterprint' dimusnahkan. 
+                // OS Android dilarang membunuh DOM sebelum Print Spooler selesai memfoto PDF.
                 setTimeout(() => window.print(), 1500);
+
             }
 
             window.generateEventLPJ = function(idEvent) {
@@ -11884,16 +11882,10 @@
                 document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
                 document.body.classList.remove('modal-open');
                 
-                // SURGICAL FIX: Mobile Print Spooler Race Condition & Jitter Protection
-                window.onafterprint = function() {
-                    setTimeout(() => {
-                        document.getElementById('print-lpj-container').innerHTML = '';
-                    }, 3000);
-                    window.onafterprint = null;
-                };
-                
+                // [SURGICAL FIX]: Timer pemusnah DOM dicabut mutlak agar CPU HP Kentang tidak kehilangan data saat merender PDF lambat.
                 // Beri waktu CPU kentang merender tabel DOM secara utuh sebelum memanggil Print Dialog
                 setTimeout(() => window.print(), 1500);
+
             };
 
             // --- REWIND & OMNI BUTTON (BLAST WA) ---
@@ -12299,8 +12291,15 @@
 
             // --- SCREENSAVER IDLE TIMER ---
             function resetIdleTimer() {
-                // SURGICAL FIX: Matikan screensaver JIKA statusnya Admin (!isKiosk) ATAU pengguna belum login/masih di layar Pilih Profil (!nav_role)
-                if(!isKiosk || !localStorage.getItem('nav_role')) {
+                // [SURGICAL FIX]: PENEGAKAN Otorisasi Multi-Faktor (Anti-Screensaver di Layar Login & Izinkan Admin)
+                let currentRole = localStorage.getItem('nav_role');
+                let currentUid = localStorage.getItem('nav_user_id');
+                let hasAdminToken = sessionStorage.getItem('_nx_auth_tk') !== null;
+                
+                // Cek Kredensial: Admin sah, Warga sah, atau Anggota yang SUDAH input WA.
+                let isFullyLoggedIn = hasAdminToken || currentRole === 'warga' || (currentRole === 'anggota' && currentUid);
+
+                if(!isFullyLoggedIn) {
                     clearTimeout(idleTimer); clearInterval(billboardInterval); clearTimeout(billboardTimeout);
                     let ss = document.getElementById('screensaver');
                     if (ss) {
@@ -12311,7 +12310,7 @@
                     isScreensaverActive = false;
                     return;
                 }
-                
+             
                 if(isScreensaverActive) {
                     let ss = document.getElementById('screensaver');
                     if (ss) {
