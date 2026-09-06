@@ -7968,17 +7968,52 @@
                             finalSaldoAwal[targetD] += saldoAwalDompet[d];
                         });
                         
-                        let currentBuckets = typeof calculateVirtualLedger === 'function' ? calculateVirtualLedger() : null;
+                        // [SURGICAL FIX]: ISOLATED FRACTIONAL CALCULATOR (Anti Double-Count/Inflation)
+                        let alloc_keg_cut = parseInt(getSetting('alloc_keg', 40), 10);
+                        let alloc_sos_cut = parseInt(getSetting('alloc_sos', 30), 10);
+                        let alloc_opr_cut = parseInt(getSetting('alloc_opr', 20), 10);
+                        let deletedBuckets = { KEG: 0, SOS: 0, OPR: 0, DAR: 0, BEBAS: 0 };
+                        
+                        let oldTrxUtama = [...oldTrxValid].filter(t => t.id_dompet === 'DP-UTAMA' || !t.id_dompet).sort((a,b) => a.ts - b.ts);
+                        oldTrxUtama.forEach(t => {
+                            if (t.kat === 'Saldo Awal') {
+                                let metaMatch = String(t.ket).match(/\| META:(.+)/);
+                                if (metaMatch) {
+                                    try {
+                                        let meta = JSON.parse(metaMatch[1]);
+                                        deletedBuckets.KEG += (meta.KEG || 0); deletedBuckets.SOS += (meta.SOS || 0);
+                                        deletedBuckets.OPR += (meta.OPR || 0); deletedBuckets.DAR += (meta.DAR || 0); deletedBuckets.BEBAS += (meta.BEBAS || 0);
+                                    } catch(e){ deletedBuckets.BEBAS += (t.tipe === 'masuk' ? t.nom_final : -t.nom_final); }
+                                } else { deletedBuckets.BEBAS += (t.tipe === 'masuk' ? t.nom_final : -t.nom_final); }
+                            } else if (t.tipe === 'iuran') {
+                                let vKeg = Math.floor(t.nom_final * alloc_keg_cut / 100);
+                                let vSos = Math.floor(t.nom_final * alloc_sos_cut / 100);
+                                let vOpr = Math.floor(t.nom_final * alloc_opr_cut / 100);
+                                let vDar = t.nom_final - vKeg - vSos - vOpr; 
+                                deletedBuckets.KEG += vKeg; deletedBuckets.SOS += vSos; deletedBuckets.OPR += vOpr; deletedBuckets.DAR += vDar;
+                            } else if (t.tipe === 'masuk') {
+                                let alokMatch = String(t.ket).match(/\[ALOK:([A-Z]+)\]/i);
+                                if (alokMatch && deletedBuckets[alokMatch[1]] !== undefined) deletedBuckets[alokMatch[1]] += t.nom_final;
+                                else deletedBuckets.BEBAS += t.nom_final;
+                            } else if (t.tipe === 'keluar') {
+                                if (t.status === 'talangan') return;
+                                let amt = t.status === 'pending' ? t.nom_awal : t.nom_final;
+                                let alokMatch = String(t.ket).match(/\[ALOK:([A-Z]+)\]/i);
+                                if (alokMatch && deletedBuckets[alokMatch[1]] !== undefined) deletedBuckets[alokMatch[1]] -= amt;
+                                else deletedBuckets.BEBAS -= amt;
+                            }
+                        });
 
                         Object.keys(finalSaldoAwal).forEach(d => {
                             if(finalSaldoAwal[d] !== 0) {
                                 let amt = finalSaldoAwal[d];
                                 let extraKet = '';
-                                if (d === 'DP-UTAMA' && currentBuckets) {
-                                    extraKet = ` | META:{"KEG":${currentBuckets.KEG},"SOS":${currentBuckets.SOS},"OPR":${currentBuckets.OPR},"DAR":${currentBuckets.DAR},"BEBAS":${currentBuckets.BEBAS}}`;
+                                if (d === 'DP-UTAMA') {
+                                    extraKet = ` | META:{"KEG":${deletedBuckets.KEG},"SOS":${deletedBuckets.SOS},"OPR":${deletedBuckets.OPR},"DAR":${deletedBuckets.DAR},"BEBAS":${deletedBuckets.BEBAS}}`;
                                 }
                                 
                                 storeTrx.put({
+
                                     id: genID('SA'), ts: Date.now(), tipe: amt > 0 ? 'masuk' : 'keluar',
                                     nom_awal: Math.abs(amt), nom_final: Math.abs(amt),
                                     ket: (amt > 0 ? "Saldo Awal Pindahan (Cut-Off Masuk)" : "Koreksi Saldo Awal (Akumulasi Pengeluaran Pindahan)") + extraKet, 
@@ -11333,15 +11368,74 @@
                 const bNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
                 
                 let appLogo = document.getElementById('prof-logo-img').src;
-                // [SURGICAL FIX] Failsafe Logo: Membuka kunci agar logo default tetap ikut tercetak sebagai Kop dan Watermark
-                if (!appLogo) {
-                    appLogo = 'icon-512.png'; 
-                }
+                if (!appLogo) { appLogo = 'icon-512.png'; }
 
-                let tIn = 0, tOut = 0; let mData = {}; let cData = {}; let sAwal = 0;
+                // 1. IDENTIFIKASI PROGRAM MANDIRI (TITIPAN)
+                let mandiriEventIds = [];
+                state.trx.forEach(t => {
+                    if (!t.is_deleted && t.id_event && (t.kat === 'Pembayaran Program' || t.tipe === 'peserta')) {
+                        if (!mandiriEventIds.includes(t.id_event)) mandiriEventIds.push(t.id_event);
+                    }
+                });
+
+                // 2. KALKULASI POSISI KAS FISIK (BAB I)
+                let bendaharaFisikAmt = 0;
+                let rincianBendaharaArr = [];
+                let pjFisikAmt = 0;
+                let rincianPjArr = [];
+                
+                // Dompet Reguler (Di tangan Bendahara)
+                state.dompet.filter(d => !d.is_pj && d.status !== 'arsip').forEach(d => {
+                    let dIn = 0, dOut = 0, dPend = 0;
+                    state.trx.filter(t => !t.is_deleted && t.id_dompet === d.id).forEach(t => {
+                        if(t.tipe === 'masuk' || t.tipe === 'iuran') dIn += t.nom_final;
+                        if(t.tipe === 'keluar') { if(t.status === 'pending') dPend += t.nom_awal; else dOut += t.nom_final; }
+                    });
+                    let sisa = dIn - dOut - dPend;
+                    bendaharaFisikAmt += sisa;
+                    if(sisa > 0) rincianBendaharaArr.push(`Kas ${esc(d.nama)} Rp ${fmtRp(sisa)}`);
+                });
+                
+                // Dompet PJ (Di tangan Panitia)
+                state.dompet.filter(d => d.is_pj && d.status === 'aktif').forEach(d => {
+                    let dIn = 0, dOut = 0;
+                    state.trx.filter(t => !t.is_deleted && t.id_dompet === d.id).forEach(t => {
+                        if(t.tipe === 'masuk') dIn += t.nom_final;
+                        if(t.tipe === 'keluar') { if (t.status === 'pending') dOut += t.nom_awal; else dOut += t.nom_final; }
+                    });
+                    let sisa = dIn - dOut;
+                    pjFisikAmt += sisa;
+                    
+                    let agPj = state.anggota.find(a => a.id === d.id_anggota);
+                    let namaPj = agPj ? agPj.nama.split(' ')[0] : 'Panitia';
+                    if (sisa > 0) rincianPjArr.push(`Sdr/i ${esc(namaPj)} Rp ${fmtRp(sisa)}`);
+                });
+                
+                // Hutang Talangan
+                let hutangTalanganAmt = 0;
+                let talanganList = [];
+                let talanganMap = {};
+                state.trx.filter(t => !t.is_deleted && t.tipe === 'keluar' && t.status === 'talangan').forEach(t => {
+                    hutangTalanganAmt += t.nom_awal;
+                    if(!talanganMap[t.id_anggota]) talanganMap[t.id_anggota] = 0;
+                    talanganMap[t.id_anggota] += t.nom_awal;
+                });
+                Object.keys(talanganMap).forEach(idAg => {
+                    let ag = state.anggota.find(a => a.id === idAg);
+                    let n = ag ? ag.nama.split(' ')[0] : 'Anggota';
+                    talanganList.push(n);
+                });
+                
+                let totalKekayaanFisik = bendaharaFisikAmt + pjFisikAmt;
+
+                // 3. KALKULASI ARUS KAS ORGANISASI MURNI (BAB II)
+                let tIn = 0, tOut = 0; let mData = {}; let sAwal = 0;
                 const validTrx = state.trx.filter(t => !t.is_deleted).sort((a,b) => a.ts - b.ts);
                 
                 validTrx.forEach(t => {
+                    // Filter program mandiri agar tidak terjadi inflasi akuntansi organisasi
+                    if (mandiriEventIds.includes(t.id_event)) return;
+                    
                     if (t.kat === 'Transfer Internal' || t.kat === 'Uang Muka Kegiatan' || t.kat === 'Sisa Uang Muka') return;
 
                     let inAmt = (t.tipe === 'masuk' || t.tipe === 'iuran') ? t.nom_final : 0;
@@ -11358,32 +11452,19 @@
                     if (!mData[mKey]) mData[mKey] = { in: 0, out: 0 };
                     
                     if (inAmt > 0) { tIn += inAmt; mData[mKey].in += inAmt; }
-                    if (outAmt > 0) {
-                        tOut += outAmt; mData[mKey].out += outAmt;
-                        
-                        // [SURGICAL FIX]: THE EVENT NAME OVERRIDE PROTOCOL
-                        // Memaksa sistem untuk membaca Nama Program Acara jika transaksi tersebut terikat pada sebuah acara.
-                        // Mengabaikan kategori generik seperti "Operasional" agar BAB III LPJ lebih spesifik dan transparan.
-                        let kat = t.kat || 'Lain-Lain';
-                        if (t.id_event) {
-                            let evData = state.event.find(e => e.id === t.id_event);
-                            if (evData) kat = `Program: ${evData.nama}`;
-                        }
-                        
-                        if (!cData[kat]) cData[kat] = 0; cData[kat] += outAmt;
-                    }
+                    if (outAmt > 0) { tOut += outAmt; mData[mKey].out += outAmt; }
                 });
 
-                let saldo = sAwal + tIn - tOut;
-                let maxOutMonth = Object.keys(mData).length > 0 ? Object.keys(mData).reduce((a, b) => mData[a].out > mData[b].out ? a : b) : '-';
-                let maxOutVal = maxOutMonth !== '-' ? mData[maxOutMonth].out : 0;
-                let statusKas = saldo >= ((tOut / (Object.keys(mData).length || 1)) * 3) ? "AMAN & SEHAT (Masih memiliki dana cadangan yang cukup)" : "PERLU PERHATIAN (Pengeluaran cukup besar, mohon dihemat)";
-                
-                let nlgText = `Berdasarkan rekap otomatis sistem per tanggal ${dStr}, total uang kas yang masuk ke organisasi mencapai <b>Rp ${fmtRp(tIn)}</b>. Sedangkan total uang kas yang telah digunakan (dibelanjakan) adalah sebesar <b>Rp ${fmtRp(tOut)}</b>. Dari rincian tersebut, saat ini Karang Taruna <span class="font-nasa" style="font-size: 14px; letter-spacing: 0.5px;">NAVASENA</span> memiliki SISA SALDO KAS sebesar <b>Rp ${fmtRp(saldo)}</b>.<br><br>Kondisi keuangan organisasi saat ini dinilai <b>${statusKas}</b>. Pengeluaran paling besar terjadi pada bulan <b>${maxOutMonth}</b> dengan total belanja mencapai <b>Rp ${fmtRp(maxOutVal)}</b>. Laporan ini dicetak langsung dari sistem aplikasi secara transparan, akurat, dan tidak dapat dimanipulasi.`;
+                let saldoOrg = sAwal + tIn - tOut;
 
+                // 4. GENERATE STRINGER HTML BAB I
+                let rincianBendaharaStr = rincianBendaharaArr.length > 0 ? `(Rincian: ${rincianBendaharaArr.join(' + ')})` : '';
+                let rincianPjStr = rincianPjArr.length > 0 ? `(Rincian: Sedang dibawa ${rincianPjArr.join(' & ')} sebagai modal belanja operasional lapangan. Nota resmi menyusul).` : '(Seluruh dana panitia telah di-LPJ-kan)';
+                let talanganStr = hutangTalanganAmt > 0 ? `Saat ini Kas Karang Taruna memiliki hutang sebesar <b>Rp ${fmtRp(hutangTalanganAmt)}</b> kepada anggota (${talanganList.join(', ')}) yang telah menalangi belanja keperluan acara menggunakan uang pribadi. Uang ini akan segera diganti/dicairkan oleh Bendahara.` : `Saat ini organisasi tidak memiliki hutang talangan aktif kepada anggota.`;
+
+                // 5. GENERATE HTML BAB II (Tabel Arus Kas)
                 let mHtml = '';
                 let runningBalance = sAwal;
-                
                 if (sAwal !== 0) {
                     mHtml += `<tr style="background:#f0fdf4;">
                         <td style="padding:8px; border:1px solid #000; font-weight:bold; color:#166534;">SALDO AWAL (PINDAHAN)</td>
@@ -11403,15 +11484,49 @@
                     </tr>`;
                 });
 
-                let cHtml = '';
-                if (tOut > 0) {
-                    Object.keys(cData).sort((a,b) => cData[b] - cData[a]).forEach(k => {
-                        let pct = ((cData[k] / tOut) * 100).toFixed(1);
-                        cHtml += `<tr><td style="padding:6px 8px; border:1px solid #000;">${esc(k)}</td><td style="padding:6px 8px; border:1px solid #000; text-align:right;">Rp ${fmtRp(cData[k])}</td><td style="padding:6px 8px; border:1px solid #000; text-align:center;">${pct}%</td></tr>`;
+                // 6. GENERATE HTML BAB III (Program Mandiri)
+                let mandiriHtml = '';
+                let countMandiri = 0;
+                mandiriEventIds.forEach(evId => {
+                    let ev = state.event.find(e => e.id === evId);
+                    if (!ev) return;
+                    countMandiri++;
+                    
+                    let mIn = 0, mOut = 0;
+                    state.trx.filter(t => !t.is_deleted && t.id_event === ev.id).forEach(t => {
+                        if (t.kat === 'Transfer Internal' || t.kat === 'Uang Muka Kegiatan' || t.kat === 'Sisa Uang Muka') return;
+                        if (t.tipe === 'masuk' || t.tipe === 'iuran') mIn += t.nom_final;
+                        if (t.tipe === 'keluar') mOut += (t.status === 'pending' ? t.nom_awal : t.nom_final);
                     });
-                } else { cHtml = '<tr><td colspan="3" style="text-align:center; padding:10px; border:1px solid #000;">Belum ada data pengeluaran.</td></tr>'; }
+                    let mSisa = mIn - mOut;
+                    let sts = mSisa <= 0 ? `Rp 0 (Lunas & Selesai)` : `Rp ${fmtRp(mSisa)}`;
+                    
+                    mandiriHtml += `
+                    <div style="margin-bottom: 16px; border: 1px dashed #64748b; padding: 12px; border-radius: 8px;">
+                        <h4 style="font-size: 13px; margin: 0 0 6px 0;">${countMandiri}. ${esc(ev.nama)}</h4>
+                        <p style="font-size: 12px; margin: 0 0 8px 0; line-height: 1.4; color: #334155;"><b>Keterangan:</b> Program ini adalah program resmi yang difasilitasi oleh Karang Taruna. Pembiayaan program bersifat <b>Mandiri</b> (bersumber dari iuran/partisipasi warga) dan <b>TIDAK MENGGUNAKAN</b> uang Kas Utama organisasi.</p>
+                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 4px 0;">Total Iuran Terkumpul (Dari Warga)</td>
+                                <td style="text-align: right; font-weight: bold;">Rp ${fmtRp(mIn)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0;">Total Pembayaran ke Supplier / Pengeluaran</td>
+                                <td style="text-align: right; font-weight: bold; color: #991b1b;">Rp ${fmtRp(mOut)}</td>
+                            </tr>
+                            <tr style="border-top: 1px solid #000;">
+                                <td style="padding: 6px 0; font-weight: bold;">SISA SALDO PROGRAM</td>
+                                <td style="text-align: right; font-weight: bold; color: #166534;">${sts}</td>
+                            </tr>
+                        </table>
+                    </div>`;
+                });
+                
+                if(countMandiri === 0) {
+                    mandiriHtml = `<p style="font-size: 12px; font-style: italic; color: #64748b; margin-top: 6px;">Tidak ada program mandiri / iuran partisipasi yang tercatat pada periode ini.</p>`;
+                }
 
-                // The 3 Pillar Global Extraction
+                // 7. PILAR PENGESAHAN
                 let jStr = String(getSetting('jabatan_list', 'Ketum NAVASENA\nSekretaris Jenderal\nBendahara Umum\nKoordinator Humas\nAdmin Medsos'));
                 let masterArr = jStr.split(/\n|,/).map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s !== '');
                 
@@ -11429,24 +11544,19 @@
 
                 let html = `
                 <style>
-                    /* THE ARCHITECT FIX: Import MUTLAK harus di paling atas */
                     @import url('https://fonts.cdnfonts.com/css/nasalization-2');
-                    
-                    /* THE ARCHITECT FIX: Class font harus global agar diload memori lebih awal */
                     .font-nasa { font-family: 'Nasalization', sans-serif !important; }
-
                     @media print {
                         @page { size: portrait; margin: 15mm 12mm 15mm 12mm; }
                         body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Times New Roman', Times, serif; }
                         #print-lpj-container { display: block !important; position: static !important; width: 100% !important; color: #000 !important; background: white !important; }
                     }
-                    
                 </style>
                 <div style="font-family: 'Times New Roman', Times, serif; color: #000; position: relative; width: 100%; min-height: 100vh;">
                     
                     ${appLogo ? `<img src="${appLogo}" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 550px; opacity: 0.15; z-index: 0; pointer-events: none; object-fit: contain;">` : ''}
                     
-                    <!-- KOP SURAT RESMI REPLIKA (NAVASENA RT 05) - PERFECT CENTER BALANCER FIX -->
+                    <!-- KOP SURAT -->
                     <div style="display: flex; align-items: center; border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 2px;">
                         <div style="width: 85px; display: flex; justify-content: flex-start; flex-shrink: 0;">
                             ${appLogo ? `<img src="${appLogo}" style="width: 85px; height: 85px; object-fit: contain;">` : ``}
@@ -11459,7 +11569,6 @@
                         </div>
                         <div style="width: 85px; flex-shrink: 0;"></div>
                     </div>
-                    <!-- Garis Tipis Ekstra (Double Line Kop) -->
                     <div style="width: 100%; height: 1px; background: #000; margin-bottom: 24px;"></div>
 
                     <table style="width: 100%; margin-bottom: 24px; font-size: 12px; border: none; line-height: 1.5;">
@@ -11467,10 +11576,20 @@
                         <tr><td>Perihal</td><td>: <b>Laporan Keuangan Karang Taruna (Global)</b></td><td></td></tr>
                     </table>
 
-                    <h3 style="font-size:14px; margin-bottom:8px; border-bottom: 2px solid #000; display:inline-block;">BAB I: KESIMPULAN LAPORAN KEUANGAN</h3>
-                    <p style="text-align:justify; font-size:13px;">${nlgText}</p>
+                    <h3 style="font-size:14px; margin-bottom:8px; border-bottom: 2px solid #000; display:inline-block;">BAB I: POSISI UANG KAS FISIK SAAT INI</h3>
+                    <p style="text-align:justify; font-size:13px; line-height: 1.5; margin-bottom: 12px;">Total Kekayaan Karang Taruna per tanggal cetak ini adalah <b>Rp ${fmtRp(totalKekayaanFisik)}</b>. Berikut adalah rincian letak keberadaan uang fisik tersebut:</p>
+                    <ol style="font-size:13px; line-height: 1.6; margin-top: 0; padding-left: 24px; margin-bottom: 16px;">
+                        <li><b>Uang Tunai di Tangan Bendahara: Rp ${fmtRp(bendaharaFisikAmt)}</b><br><span style="font-size: 12px; color: #475569;">${rincianBendaharaStr}</span></li>
+                        <li><b>Uang Tunai di Tangan Panitia (Belum di-LPJ-kan): Rp ${fmtRp(pjFisikAmt)}</b><br><span style="font-size: 12px; color: #475569;">${rincianPjStr}</span></li>
+                    </ol>
+                    <p style="text-align:justify; font-size:12px; line-height: 1.5; color: #991b1b;"><b>Catatan Hutang Organisasi (Talangan):</b><br>${talanganStr}</p>
                     
-                    <h3 style="font-size:14px; margin-top:25px; margin-bottom:8px; border-bottom: 2px solid #000; display:inline-block;">BAB II: RINCIAN ARUS KAS PER BULAN</h3>
+                    <h3 style="font-size:14px; margin-top:25px; margin-bottom:8px; border-bottom: 2px solid #000; display:inline-block;">BAB II: REKAPITULASI ARUS KAS ORGANISASI</h3>
+                    <p style="text-align:justify; font-size:12px; line-height: 1.5; margin-bottom: 12px; color: #475569;"><i>(Catatan: Pemasukan dan Pengeluaran di bawah ini adalah perputaran arus kas organisasi murni, sudah dipisahkan dari pendanaan program mandiri/titipan warga).</i></p>
+                    <ul style="font-size:13px; line-height: 1.6; margin-top: 0; padding-left: 20px; margin-bottom: 12px;">
+                        <li>Total Uang Masuk: <b>Rp ${fmtRp(tIn)}</b></li>
+                        <li>Total Uang Keluar: <b>Rp ${fmtRp(tOut)}</b> <i>(Murni belanja operasional yang sudah lunas ber-Nota)</i></li>
+                    </ul>
                     <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom: 20px; border: 1px solid #000; position: relative; z-index: 2;">
                         <thead>
                             <tr style="background:#eaeaea;">
@@ -11486,23 +11605,14 @@
                                 <td style="padding:10px; border:1px solid #000; text-align:right; text-transform:uppercase;">TOTAL KESELURUHAN</td>
                                 <td style="padding:10px; border:1px solid #000; text-align:right;">Rp ${fmtRp(tIn)}</td>
                                 <td style="padding:10px; border:1px solid #000; text-align:right;">Rp ${fmtRp(tOut)}</td>
-                                <td style="padding:10px; border:1px solid #000; text-align:right;">Rp ${fmtRp(saldo)}</td>
+                                <td style="padding:10px; border:1px solid #000; text-align:right;">Rp ${fmtRp(saldoOrg)}</td>
                             </tr>
                         </tbody>
                     </table>
 
                     <div style="page-break-inside: avoid; position: relative; z-index: 2;">
-                        <h3 style="font-size:14px; margin-top:15px; margin-bottom:8px; border-bottom: 2px solid #000; display:inline-block;">BAB III: PENGGUNAAN DANA TERBESAR</h3>
-                        <table style="width:70%; border-collapse:collapse; font-size:12px;">
-                            <thead>
-                                <tr style="background:#eaeaea;">
-                                    <th style="padding:6px 8px; border:1px solid #000; text-align:left;">Tujuan Pengeluaran</th>
-                                    <th style="padding:6px 8px; border:1px solid #000; text-align:right;">Total Dibelanjakan</th>
-                                    <th style="padding:6px 8px; border:1px solid #000; text-align:center;">Persentase (%)</th>
-                                </tr>
-                            </thead>
-                            <tbody>${cHtml}</tbody>
-                        </table>
+                        <h3 style="font-size:14px; margin-top:15px; margin-bottom:8px; border-bottom: 2px solid #000; display:inline-block;">BAB III: LAPORAN PROGRAM MANDIRI</h3>
+                        ${mandiriHtml}
                     </div>
 
                     <div style="display: flex; justify-content: space-between; margin-top: 45px; text-align: center; font-size: 12px; page-break-inside: avoid; position: relative; z-index: 2;">
@@ -11523,25 +11633,20 @@
                         </div>
                     </div>
                     
-                    <!-- FOOTER SLOGAN NAVASENA (Anti-Overlap) -->
                     <div style="margin-top: 60px; width: 100%; text-align: center; font-style: italic; font-weight: bold; font-size: 11px; color: #000; padding-bottom: 12px;">
                         ~ Bersatu - Berkarya - Berdaya ~
                     </div>
                 </div>`;
                 
                 document.getElementById('print-lpj-container').innerHTML = html;
-                showToast("Memproses Matriks Laporan...");
+                showToast("Memproses Cetak Laporan LPJ.");
                 closeModal('mod-settings'); document.body.classList.remove('modal-open');
                 
-                // SURGICAL FIX: Mobile Print Spooler Race Condition & Jitter Protection
                 window.onafterprint = function() {
-                    setTimeout(() => {
-                        document.getElementById('print-lpj-container').innerHTML = '';
-                    }, 3000);
+                    setTimeout(() => { document.getElementById('print-lpj-container').innerHTML = ''; }, 3000);
                     window.onafterprint = null;
                 };
                 
-                // Beri waktu CPU kentang merender tabel DOM secara utuh sebelum memanggil Print Dialog
                 setTimeout(() => window.print(), 1500);
             }
 
@@ -11562,6 +11667,7 @@
                 let combinedArr = [];
                 let totIn = 0;
                 let totOut = 0;
+                let totalHutangTalangan = 0;
 
                 eTrx.forEach(t => {
                     // Penangkis Noise (Buang mutasi sistem internal dari laporan Warga)
@@ -11590,6 +11696,7 @@
                     } else if (t.tipe === 'keluar') {
                         let rOut = (t.status === 'pending' || t.status === 'talangan') ? t.nom_awal : t.nom_final;
                         totOut += rOut;
+                        if (t.status === 'talangan') totalHutangTalangan += t.nom_awal;
                         combinedArr.push({ tgl: tg, uraian: cleanKet, debit: '-', kredit: `Rp ${fmtRp(rOut)}` });
                     }
                 });
@@ -11608,7 +11715,7 @@
                     totalDanaDiTangan += (dIn - dOut);
                 });
                 
-                let sisaRiil = sisaKas - totalDanaDiTangan;
+                let sisaRiil = sisaKas + totalHutangTalangan - totalDanaDiTangan;
 
                 let tableRows = '';
                 
@@ -11628,24 +11735,41 @@
 
                 // [SURGICAL FIX] Menghancurkan <TFOOT> dan menyuntikkan Teks Total ke dalam <tbody>
                 // untuk mencegah tabel tercetak dobel pada setiap perpindahan halaman
+                
+                let textSisaKas = sisaKas >= 0 ? 'KEKAYAAN BERSIH ACARA (SURPLUS)' : 'KEKURANGAN KAS ACARA (DEFISIT / PANITIA NOMBOK)';
+                let hasReconciliation = totalDanaDiTangan > 0 || totalHutangTalangan > 0;
+                let bottomBorderStr = hasReconciliation ? '1px solid #000' : 'none';
+
                 tableRows += `
                 <tr style="font-weight: bold; background: #f3f4f6;">
-                    <td colspan="2" style="padding: 10px 8px; border: 1px solid #000; text-align: right;">TOTAL AKUMULASI</td>
+                    <td colspan="2" style="padding: 10px 8px; border: 1px solid #000; text-align: right;">[A] TOTAL DANA MASUK &amp; [B] PENGELUARAN (LUNAS)</td>
                     <td style="padding: 10px 8px; border: 1px solid #000; text-align: right; color: #065f46;">Rp ${fmtRp(totIn)}</td>
                     <td style="padding: 10px 8px; border: 1px solid #000; text-align: right; color: #991b1b;">Rp ${fmtRp(totOut)}</td>
                 </tr>
                 <tr style="font-weight: bold; background: ${sisaKas >= 0 ? '#d1fae5' : '#fee2e2'}; font-size: 13px;">
-                    <td colspan="3" style="padding: 12px 8px; border: 1px solid #000; text-align: right; border-bottom: ${totalDanaDiTangan > 0 ? '1px solid #000' : 'none'};">${sisaKas >= 0 ? 'SISA KAS ACARA BERSIH (SURPLUS)' : 'KEKURANGAN KAS ACARA (DEFISIT / PANITIA NOMBOK)'}</td>
-                    <td style="padding: 12px 8px; border: 1px solid #000; border-bottom: ${totalDanaDiTangan > 0 ? '1px solid #000' : 'none'}; text-align: right; color: ${sisaKas >= 0 ? '#065f46' : '#991b1b'};">Rp ${fmtRp(Math.abs(sisaKas))}</td>
+                    <td colspan="3" style="padding: 12px 8px; border: 1px solid #000; text-align: right; border-bottom: ${bottomBorderStr};">${textSisaKas}</td>
+                    <td style="padding: 12px 8px; border: 1px solid #000; border-bottom: ${bottomBorderStr}; text-align: right; color: ${sisaKas >= 0 ? '#065f46' : '#991b1b'};">Rp ${fmtRp(Math.abs(sisaKas))}</td>
                 </tr>`;
 
-                // Jika ada Dana Di Tangan PJ, cetak 2 Baris Rekonsiliasi Ekstra
+                // Cetak Baris Rekonsiliasi Ekstra jika ada Talangan atau Uang Muka
+                if (totalHutangTalangan > 0) {
+                    tableRows += `
+                    <tr style="font-weight: bold; background: #fffbeb; font-size: 12.5px;">
+                        <td colspan="3" style="padding: 10px 8px; border: 1px solid #000; text-align: right;">DANA DITALANGI ANGGOTA (HUTANG KAS)</td>
+                        <td style="padding: 10px 8px; border: 1px solid #000; text-align: right; color: #d97706;">+ Rp ${fmtRp(totalHutangTalangan)}</td>
+                    </tr>`;
+                }
+
                 if (totalDanaDiTangan > 0) {
                     tableRows += `
                     <tr style="font-weight: bold; background: #fef3c7; font-size: 12.5px;">
-                        <td colspan="3" style="padding: 10px 8px; border: 1px solid #000; text-align: right;">DANA BELUM DI-LPJ-KAN (UANG MUKA DI TANGAN PANITIA)</td>
+                        <td colspan="3" style="padding: 10px 8px; border: 1px solid #000; text-align: right;">DANA BELUM DI-LPJ-KAN (UANG MUKA DI TANGAN PJ)</td>
                         <td style="padding: 10px 8px; border: 1px solid #000; text-align: right; color: #b45309;">- Rp ${fmtRp(totalDanaDiTangan)}</td>
-                    </tr>
+                    </tr>`;
+                }
+                
+                if (hasReconciliation) {
+                    tableRows += `
                     <tr style="font-weight: bold; background: #eff6ff; font-size: 13px;">
                         <td colspan="3" style="padding: 12px 8px; border: 1px solid #000; text-align: right; border-bottom: none;">SISA KAS TERSEDIA DI DOMPET (UANG RIIL)</td>
                         <td style="padding: 12px 8px; border: 1px solid #000; border-bottom: none; text-align: right; color: #1d4ed8;">Rp ${fmtRp(Math.abs(sisaRiil))}</td>
@@ -11754,7 +11878,7 @@
                 </div>`;
 
                 document.getElementById('print-lpj-container').innerHTML = html;
-                showToast("Memproses Replikasi Blangko Surat & T-Format LPJ...");
+                showToast("Memproses Cetak Laporan LPJ.");
                 
                 // Tutup modal apapun yang sedang terbuka agar tidak nyangkut saat print tertutup
                 document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
