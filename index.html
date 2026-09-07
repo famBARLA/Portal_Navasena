@@ -2524,6 +2524,7 @@
                 let iuranMap = {}; 
                 let talanganMap = {}; 
                 let donasiMap = {};
+                let sosialArrearsMap = {}; // Kapsul pelacak piutang program Sosial
                 
                 for(let i=0; i < state.trx.length; i++) {
                     let t = state.trx[i];
@@ -2541,6 +2542,12 @@
                     } else if (t.tipe === 'masuk' && t.id_anggota && t.kat !== 'Transfer Internal' && t.kat !== 'Saldo Awal' && t.kat !== 'Sisa Uang Muka' && t.kat !== 'Pembayaran Program' && !String(t.kat||'').toLowerCase().includes('sponsor') && !(t.kat||'').includes('Koreksi Saldo')) {
                         let keyD = `${t.id_anggota}-${tYear}-${tMonth}`;
                         donasiMap[keyD] = (donasiMap[keyD] || 0) + t.nom_final;
+                    } else if (t.tipe === 'peserta' && t.nom_final < t.nom_awal) {
+                        // SURGICAL FIX: Pendeteksi Utang Sosial (Mencegah God-Mode Bypass)
+                        let evCek = state.event.find(e => e.id === t.id_event);
+                        if (evCek && evCek.sifat === 'sosial') {
+                            sosialArrearsMap[t.id_anggota] = (sosialArrearsMap[t.id_anggota] || 0) + 1;
+                        }
                     }
                 }
 
@@ -2554,6 +2561,13 @@
                     let xp_kepatuhan = ag.hist_kepatuhan_xp || 0; // SURGICAL PROTECTION: Pembekuan XP sejarah linier
                     let xp_bonus = ag.hist_xp_bonus || 0; 
                     let hasPastArrears = false;
+                    
+                    // SURGICAL FIX: Penjatuhan Palu Keadilan untuk Penunggak Sosial
+                    let utangSosial = sosialArrearsMap[ag.id] || 0;
+                    if (utangSosial > 0) {
+                        hasPastArrears = true;
+                        xp_kepatuhan -= (75 * utangSosial);
+                    }
 
                     let jY = parseInt(ag.join_year) || currY;
                     let jB = parseInt(ag.join_bln) || 1;
@@ -3237,6 +3251,11 @@
                         return showToast("TOLAK: Mutasi ini adalah sistem Terikat (Double-Entry / Talangan / Saldo Awal). Dilarang dihapus manual agar integritas kas tidak hancur!");
                     }
                     
+                    // SURGICAL FIX: Proteksi Phantom Money Printer untuk Dana Sosial
+                    if (tCek.kat === 'Bantuan Sosial' && String(tCek.ket).includes('Santunan Darurat:')) {
+                        return showToast("TOLAK: Transaksi Induk Dana Sosial tidak dapat dibatalkan parsial. Anda harus memusnahkan Program Acaranya di Riwayat Arsip jika ingin membatalkan!");
+                    }
+                    
                     // SURGICAL FIX: IMMUTABLE ARCHIVE SHIELD (Proteksi Sejarah LPJ)
                     if (tCek.id_event) {
                         let evCek = state.event.find(e => e.id === tCek.id_event);
@@ -3344,7 +3363,7 @@
                 // HANYA mutasi sistem murni (Transisi Mesin) yang dikunci mutlak.
                 // Uang Muka / Talangan yang sudah lunas TETAP BISA diedit Teks Dasarnya agar typo bisa diperbaiki.
                 let strKet = String(tTarget.ket);
-                let isTerikat = (tTarget.kat === 'Transfer Internal' || tTarget.kat === 'Uang Muka Kegiatan' || tTarget.kat === 'Sisa Uang Muka' || tTarget.kat === 'Saldo Awal' || tTarget.kat === 'Pembayaran Program' || tTarget.kat === 'Pendaftaran Program' || tTarget.kat === 'Partisipasi / Pesanan' || strKet.startsWith('Penyelesaian Talangan:') || strKet.startsWith('Reimburse Nombok Uang Muka:'));
+                let isTerikat = (tTarget.kat === 'Bantuan Sosial' || tTarget.kat === 'Transfer Internal' || tTarget.kat === 'Uang Muka Kegiatan' || tTarget.kat === 'Sisa Uang Muka' || tTarget.kat === 'Saldo Awal' || tTarget.kat === 'Pembayaran Program' || tTarget.kat === 'Pendaftaran Program' || tTarget.kat === 'Partisipasi / Pesanan' || strKet.startsWith('Penyelesaian Talangan:') || strKet.startsWith('Reimburse Nombok Uang Muka:'));
                 if (isTerikat) {
 
                     return showToast("TOLAK: Teks mutasi sistem otomatis/terikat tidak boleh diubah manual!");
@@ -4683,85 +4702,146 @@
                 if(typeof pulseHaptic === 'function') pulseHaptic('light');
                 let title = ''; let html = ''; let color = ''; let icon = '';
 
-                if (tipe === 'KEG') {
+if (tipe === 'KEG') {
                     title = 'FUNGSI DANA KEGIATAN'; color = '#2563EB';
                     icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`;
-                    html = `<div style="font-size: 13px; color: var(--text-main); line-height: 1.6; text-align: justify;">Dana ini merupakan tabungan khusus untuk membiayai pelaksanaan program kerja. Dana ini berfungsi sebagai modal awal bagi Karang Taruna sebelum mencari dana tambahan dari donatur atau sponsor dalam mengadakan acara, seperti peringatan HUT RI, Sumpah Pemuda, atau kerja bakti.</div>`;
+                    html = `
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Dana khusus untuk membiayai pelaksanaan program kerja Karang Taruna NAVASENA.</div>
+                        <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 16px; margin-bottom: 16px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                            <div style="font-size: 10px; font-weight: 900; color: #2563EB; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center;">FUNGSI UTAMA: DANA KEGIATAN</div>
+                            <div style="font-size: 12px; color: #1E3A8A; line-height: 1.5; font-weight: 600;">Dana ini berfungsi sebagai modal awal bagi Karang Taruna sebelum mencari dana tambahan dari donatur atau sponsor dalam mengadakan acara.</div>
+                        </div>
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                            <div style="font-size: 10px; font-weight: 900; color: #475569; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px;">Contoh Alokasi Acara:</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <div style="color: #3B82F6;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #334155;">Peringatan HUT RI</div>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <div style="color: #3B82F6;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #334155;">Sumpah Pemuda</div>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <div style="color: #3B82F6;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #334155;">Kerja Bakti</div>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <div style="color: #3B82F6;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #334155;">Dan lain-lain</div>
+                                </div>
+                            </div>
+                        </div>`;
+                        
                 } else if (tipe === 'SOS') {
                     title = 'FUNGSI DANA SOSIAL'; color = '#059669';
-                    icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+                    icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>`;
                     html = `
-                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; text-align: justify; margin-bottom: 16px;">Dana ini dialokasikan khusus untuk bentuk kepedulian sosial, seperti menjenguk anggota aktif NAVASENA beserta keluarga intinya (suami/istri dan anak) yang sakit atau diopname.</div>
-                        <div style="background: #FEF3C7; border: 1.5px solid #FDE68A; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                            <div style="font-size: 10px; font-weight: 900; color: #D97706; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ATURAN NOMINAL</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #FCD34D; padding-bottom: 8px; margin-bottom: 8px;">
-                                <span style="font-size: 12px; font-weight: 700; color: #92400E;">Plafon Maksimal:</span>
-                                <span style="font-size: 15px; font-weight: 900; color: #B45309;">Rp 150.000</span>
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Alokasi khusus sebagai bentuk kepedulian sosial untuk menjenguk anggota aktif NAVASENA  yang sakit atau diopname.</div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                            <div style="background: #ECFDF5; border: 1.5px solid #A7F3D0; border-radius: 12px; padding: 14px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'">
+                                <div style="font-size: 9.5px; font-weight: 900; color: #059669; text-transform: uppercase; margin-bottom: 4px;">Anggaran Jenguk</div>
+                                <div style="font-size: 18px; font-weight: 900; color: #065F46; letter-spacing: -0.5px;">Rp 150.000</div>
                             </div>
-                            <div style="font-size: 11px; color: #92400E; line-height: 1.5; font-weight: 600;">Apabila saldo Dana Sosial tidak mencukupi, akan diberlakukan iuran wajib tambahan sebesar <b>Rp 5.000</b> (Semua Anggota) apabila tidak ikut menjenguk. Iuran akan ditagih pada pertemuan berikutnya.</div>
+                            <div style="background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 12px; padding: 14px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'">
+                                <div style="font-size: 9.5px; font-weight: 900; color: #DC2626; text-transform: uppercase; margin-bottom: 4px;">Iuran Tambahan</div>
+                                <div style="font-size: 18px; font-weight: 900; color: #991B1B; letter-spacing: -0.5px;">Rp 5.000</div>
+                                <div style="font-size: 9px; font-weight: 700; color: #B91C1C; margin-top: 4px; line-height: 1.3;">Jika dana sosial kurang akan di lakukan iuran per anggota.</div>
+                            </div>
                         </div>
-                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px;">
-                            <div style="font-size: 10px; font-weight: 900; color: #475569; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px;">Syarat & Ketentuan:</div>
-                            <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px;">
-                                <div style="color: #3B82F6; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-                                <div style="font-size: 12px; color: #334155; line-height: 1.5;">Penerima santunan terbatas hanya pada <b>anggota aktif dan keluarga inti</b>. Anggota keluarga di luar itu tidak termasuk.</div>
+
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; transition: 0.3s;">
+                            <div style="padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;" onclick="let b = document.getElementById('sos-acc-body'); let i = document.getElementById('sos-acc-ic'); if(b.style.display==='none'){b.style.display='block'; i.style.transform='rotate(180deg)';}else{b.style.display='none'; i.style.transform='rotate(0deg)';}">
+                                <div style="font-size: 11px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg> SYARAT & KETENTUAN
+                                </div>
+                                <svg id="sos-acc-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="3" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
-                            <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                <div style="color: #EF4444; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-                                <div style="font-size: 12px; color: #334155; line-height: 1.5;">Pemberian santunan memiliki <b>masa jeda 6 bulan</b>. Apabila sakit/opname lagi dalam kurun kurang dari 6 bulan (sejak keluar RS), santunan tidak dikeluarkan.</div>
+                            <div id="sos-acc-body" style="padding: 16px; display: none;">
+                                <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px;">
+                                    <div style="color: #3B82F6; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                                    <div style="font-size: 11.5px; color: #334155; line-height: 1.5;"><b>Penerima Sah:</b> Terbatas hanya pada anggota aktif dan keluarga inti (suami/istri dan anak). Anggota keluarga di luar itu tidak termasuk.</div>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px;">
+                                    <div style="color: #EF4444; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                                    <div style="font-size: 11.5px; color: #334155; line-height: 1.5;"><b>Masa Jeda 6 Bulan:</b> Dihitung sejak hari pertama keluar dari rumah sakit. Apabila sakit/diopname lagi dalam kurun kurang dari 6 bulan, maka santunan tidak akan dikeluarkan.</div>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                    <div style="color: #F59E0B; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                                    <div style="font-size: 11.5px; color: #334155; line-height: 1.5;"><b>Aturan Kas Defisit:</b> Apabila saldo Dana Sosial tidak mencukupi, diberlakukan iuran wajib tambahan <b>Rp 5.000/anggota</b>. Anggota yang tidak ikut menjenguk akan ditagih iuran pada pertemuan rutin berikutnya, Sisa iuran akan masuk ke Alokasi Dana Sosial.</div>
+                                </div>
                             </div>
                         </div>`;
                 } else if (tipe === 'OPR') {
                     title = 'FUNGSI DANA OPERASIONAL'; color = '#D97706';
                     icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
                     html = `
-                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; text-align: justify; margin-bottom: 16px;">Dana ini digunakan untuk mendukung kebutuhan operasional dan administrasi rutin organisasi.</div>
-                        <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                            <div style="font-size: 10px; font-weight: 900; color: #2563EB; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ALOKASI RUTIN</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 12px; font-weight: 700; color: #1E3A8A;">Uang Meja (Tuan Rumah):</span>
-                                <span style="font-size: 15px; font-weight: 900; color: #1D4ED8;">Rp 75.000</span>
-                            </div>
-                            <div style="font-size: 11px; color: #1E40AF; margin-top: 6px; line-height: 1.4;">Diserahkan kepada tuan rumah setiap selesai pertemuan rutin bulanan.</div>
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Dukungan finansial untuk memenuhi kebutuhan operasional dan administrasi rutin.</div>
+                        
+                        <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 14px; padding: 16px; margin-bottom: 16px; position: relative; overflow: hidden; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                            <div style="position: absolute; right: -10px; top: -10px; color: #FEF3C7;"><svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                            <div style="font-size: 10px; font-weight: 900; color: #D97706; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; position: relative; z-index: 2;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> ALOKASI RUTIN BULANAN</div>
+                            <div style="font-size: 14px; font-weight: 800; color: #92400E; margin-bottom: 2px; position: relative; z-index: 2;">ANGGARAN UANG MEJA</div>
+                            <div style="font-size: 26px; font-weight: 900; color: #B45309; letter-spacing: -1px; margin-bottom: 6px; position: relative; z-index: 2;">Rp 75.000</div>
+                            <div style="font-size: 11px; color: #92400E; font-weight: 600; line-height: 1.4; position: relative; z-index: 2;">Diserahkan usai pertemuan rutin selesai.</div>
                         </div>
-                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px;">
-                            <div style="font-size: 12px; color: #334155; line-height: 1.5; display: flex; gap: 8px; align-items: flex-start;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="3" style="flex-shrink: 0; margin-top: 2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                                <span>Selain itu, pengeluaran juga meliputi biaya cetak <b>fotokopi</b> dan pembelian <b>Alat Tulis Kantor (ATK)</b>.</span>
+
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
+                                <div style="background: #E2E8F0; color: #475569; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></div>
+                                <div style="font-size: 11px; font-weight: 800; color: #334155; line-height: 1.3;">Biaya<br>Fotokopi</div>
+                            </div>
+                            <div style="flex: 1; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
+                                <div style="background: #E2E8F0; color: #475569; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></div>
+                                <div style="font-size: 11px; font-weight: 800; color: #334155; line-height: 1.3;">Belanja<br>ATK</div>
                             </div>
                         </div>`;
                 } else if (tipe === 'DAR') {
                     title = 'FUNGSI DANA DARURAT'; color = '#DC2626';
                     icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
                     html = `
-                        <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 14px 16px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.05);">
-                            <div style="font-size: 13px; color: #991B1B; line-height: 1.6; text-align: justify; font-weight: 600;">Dana ini bersifat cadangan dan <b>hanya boleh digunakan dalam keadaan sangat mendesak</b>.</div>
+                        <div style="background: #FEF2F2; border: 2px solid #FECACA; border-radius: 14px; padding: 16px; margin-bottom: 16px; text-align: center; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                            <style>@keyframes pulseAlert { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }</style>
+                            <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 900; color: #DC2626; text-transform: uppercase; letter-spacing: 1px; animation: pulseAlert 2s infinite;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> PERINGATAN</div>
+                            <div style="font-size: 12.5px; color: #991B1B; font-weight: 700; line-height: 1.5; margin-top: 8px;">Dana ini bersifat cadangan dan <b>HANYA</b> boleh digunakan dalam keadaan sangat mendesak.</div>
                         </div>
-                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px;">
-                            <div style="font-size: 10px; font-weight: 900; color: #475569; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">Contoh Penggunaan:</div>
+
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                            <div style="font-size: 10px; font-weight: 900; color: #475569; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px;">FUNGSI & PENGGUNAAN:</div>
+                            <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px;">
+                                <div style="color: #F59E0B; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                                <div style="font-size: 12px; color: #334155; line-height: 1.5; font-weight: 600;">Menutupi pengeluaran tak terduga secara seketika.</div>
+                            </div>
                             <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                <div style="color: #F59E0B; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-                                <div style="font-size: 12px; color: #334155; line-height: 1.5;">Untuk menutupi pengeluaran tak terduga atau mencegah defisit anggaran (minus) pada saat pelaksanaan suatu acara, agar panitia tidak nombok.</div>
+                                <div style="color: #EF4444; padding-top: 2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                                <div style="font-size: 12px; color: #334155; line-height: 1.5; font-weight: 600;">Mencegah defisit anggaran (Minus) pada saat acara.</div>
                             </div>
                         </div>`;
                 } else if (tipe === 'BBS') {
                     title = 'FUNGSI DANA BEBAS'; color = '#475569';
                     icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`;
                     html = `
-                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; text-align: justify; margin-bottom: 16px;">Dana ini bersifat fleksibel dan tidak terikat pada iuran wajib pecahan anggota.</div>
-                        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; display: flex; align-items: flex-start; gap: 10px;">
-                                <div style="color: #10B981; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Dana fleksibel yang tidak terikat pada alokasi iuran wajib bulanan anggota.</div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                                <div style="background: #16A34A; color: white; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                                </div>
                                 <div>
-                                    <div style="font-size: 11px; font-weight: 900; color: #334155; text-transform: uppercase; margin-bottom: 4px;">Sumber Dana</div>
-                                    <div style="font-size: 12px; color: #475569; line-height: 1.5;">Berasal dari donatur, sponsor, sisa saldo, atau pemasukan sah lainnya.</div>
+                                    <div style="font-size: 11px; font-weight: 900; color: #15803D; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">SUMBER DANA</div>
+                                    <div style="font-size: 12px; color: #166534; line-height: 1.5; font-weight: 600;">Berasal dari donatur luar, sponsor acara, atau pemasukan sah lainnya.</div>
                                 </div>
                             </div>
-                            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; display: flex; align-items: flex-start; gap: 10px;">
-                                <div style="color: #3B82F6; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+
+                            <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+                                <div style="background: #2563EB; color: white; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                                </div>
                                 <div>
-                                    <div style="font-size: 11px; font-weight: 900; color: #334155; text-transform: uppercase; margin-bottom: 4px;">Peruntukan</div>
-                                    <div style="font-size: 12px; color: #475569; line-height: 1.5;">Dapat dialokasikan secara bebas untuk menutupi kekurangan anggaran pada pos-pos dana yang lain.</div>
+                                    <div style="font-size: 11px; font-weight: 900; color: #1D4ED8; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">FUNGSI PERUNTUKAN</div>
+                                    <div style="font-size: 12px; color: #1E3A8A; line-height: 1.5; font-weight: 600;">Dana ini dapat dialokasikan secara bebas untuk menutupi kekurangan anggaran pada pos-pos dana yang lain.</div>
                                 </div>
                             </div>
                         </div>`;
@@ -4777,7 +4857,7 @@
                 }
                 openModal('mod-drilldown');
             };
-
+            
             window.calculateVirtualLedger = function() {
                 let alloc_keg = parseInt(getSetting('alloc_keg', 40), 10);
                 let alloc_sos = parseInt(getSetting('alloc_sos', 30), 10);
@@ -4868,79 +4948,88 @@
                 let html = `
                     <div style="background: var(--surface); border: 1.5px solid #BFDBFE; border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; margin-bottom: 12px;">
                         <div style="position: absolute; right: -15px; top: -15px; background: #EFF6FF; width: 60px; height: 60px; border-radius: 50%; opacity: 0.5;"></div>
+                        
+                        <div class="no-select" style="position: absolute; top: 16px; right: 16px; background: transparent; color: #2563EB; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; transition: 0.2s; z-index: 5;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('KEG')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2;">
                             <div>
                                 <div style="font-size: 12px; font-weight: 900; color: #1E3A8A; display: flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Dana Kegiatan</div>
                                 <div style="font-size: 9px; font-weight: 700; color: #60A5FA; margin-top: 4px;">Alokasi: ${alloc_keg}% dari Iuran</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                                <div class="no-select" style="width: 24px; height: 24px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); color: #2563EB; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(37, 99, 235, 0.25); transition: 0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('KEG')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                                </div>
-                                <div style="font-size: 16px; font-weight: 900; color: ${sKeg < 0 ? '#DC2626' : '#2563EB'};">${fmtKeg}</div>
+                                <div style="font-size: 16px; font-weight: 900; color: ${sKeg < 0 ? '#DC2626' : '#2563EB'}; margin-top: 26px;">${fmtKeg}</div>
                             </div>
                         </div>
                     </div>
                     
                     <div style="background: var(--surface); border: 1.5px solid #A7F3D0; border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; margin-bottom: 12px;">
                         <div style="position: absolute; right: -15px; top: -15px; background: #ECFDF5; width: 60px; height: 60px; border-radius: 50%; opacity: 0.5;"></div>
+                        
+                        <div class="no-select" style="position: absolute; top: 16px; right: 16px; background: transparent; color: #059669; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; transition: 0.2s; z-index: 5;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('SOS')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2;">
                             <div>
                                 <div style="font-size: 12px; font-weight: 900; color: #064E3B; display: flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Dana Sosial</div>
                                 <div style="font-size: 9px; font-weight: 700; color: #34D399; margin-top: 4px;">Alokasi: ${alloc_sos}% dari Iuran</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                                <div class="no-select" style="width: 24px; height: 24px; border-radius: 50%; background: rgba(5, 150, 105, 0.1); color: #059669; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(5, 150, 105, 0.25); transition: 0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('SOS')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                                </div>
-                                <div style="font-size: 16px; font-weight: 900; color: ${sSos < 0 ? '#DC2626' : '#059669'};">${fmtSos}</div>
+                                <div style="font-size: 16px; font-weight: 900; color: ${sSos < 0 ? '#DC2626' : '#059669'}; margin-top: 26px;">${fmtSos}</div>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: var(--surface); border: 1.5px solid #FDE68A; border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; margin-bottom: 12px;">
                         <div style="position: absolute; right: -15px; top: -15px; background: #FFFBEB; width: 60px; height: 60px; border-radius: 50%; opacity: 0.5;"></div>
+                        
+                        <div class="no-select" style="position: absolute; top: 16px; right: 16px; background: transparent; color: #D97706; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; transition: 0.2s; z-index: 5;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('OPR')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2;">
                             <div>
                                 <div style="font-size: 12px; font-weight: 900; color: #92400E; display: flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Dana Operasional</div>
                                 <div style="font-size: 9px; font-weight: 700; color: #FBBF24; margin-top: 4px;">Alokasi: ${alloc_opr}% dari Iuran</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                                <div class="no-select" style="width: 24px; height: 24px; border-radius: 50%; background: rgba(217, 119, 6, 0.1); color: #D97706; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(217, 119, 6, 0.25); transition: 0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('OPR')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                                </div>
-                                <div style="font-size: 16px; font-weight: 900; color: ${sOpr < 0 ? '#DC2626' : '#D97706'};">${fmtOpr}</div>
+                                <div style="font-size: 16px; font-weight: 900; color: ${sOpr < 0 ? '#DC2626' : '#D97706'}; margin-top: 26px;">${fmtOpr}</div>
                             </div>
                         </div>
                     </div>
 
                     <div style="background: var(--surface); border: 1.5px solid #FECACA; border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; margin-bottom: 12px;">
                         <div style="position: absolute; right: -15px; top: -15px; background: #FEE2E2; width: 60px; height: 60px; border-radius: 50%; opacity: 0.5;"></div>
+                        
+                        <div class="no-select" style="position: absolute; top: 16px; right: 16px; background: transparent; color: #EF4444; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; transition: 0.2s; z-index: 5;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('DAR')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2;">
                             <div>
                                 <div style="font-size: 12px; font-weight: 900; color: #7F1D1D; display: flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Dana Darurat</div>
                                 <div style="font-size: 9px; font-weight: 700; color: #F87171; margin-top: 4px;">Alokasi: ${alloc_dar}% dari Iuran</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                                <div class="no-select" style="width: 24px; height: 24px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); color: #EF4444; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(239, 68, 68, 0.25); transition: 0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('DAR')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                                </div>
-                                <div style="font-size: 16px; font-weight: 900; color: #EF4444;">${fmtDar}</div>
+                                <div style="font-size: 16px; font-weight: 900; color: #EF4444; margin-top: 26px;">${fmtDar}</div>
                             </div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 8px; background: #F1F5F9; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 16px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="margin-top: 8px; background: #F1F5F9; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 16px; position: relative;">
+                        <div class="no-select" style="position: absolute; top: 16px; right: 16px; background: transparent; color: #475569; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; transition: 0.2s; z-index: 5;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('BBS')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2;">
                             <div>
                                 <div style="font-size: 11px; font-weight: 900; color: #475569; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Dana Bebas (Donasi)</div>
                                 <div style="font-size: 9px; font-weight: 700; color: #94A3B8; margin-top: 4px;">Dana tidak terikat pecahan iuran</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                                <div class="no-select" style="width: 24px; height: 24px; border-radius: 50%; background: rgba(71, 85, 105, 0.1); color: #475569; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(71, 85, 105, 0.25); transition: 0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" onclick="event.stopPropagation(); window.openInfoDana('BBS')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                                </div>
-                                <div style="font-size: 15px; font-weight: 900; color: ${sBbs < 0 ? '#DC2626' : '#334155'};">${fmtBbs}</div>
+                                <div style="font-size: 15px; font-weight: 900; color: ${sBbs < 0 ? '#DC2626' : '#334155'}; margin-top: 26px;">${fmtBbs}</div>
                             </div>
                         </div>
                     </div>
@@ -5101,22 +5190,49 @@
             <div class="modal-box">
                 <button class="close-modal" onclick="closeModal('mod-event-add')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 800;">Buat Program Baru</h3>
-                <div class="form-group"><label>Nama Program / Acara</label><input type="text" id="evt-nama" placeholder="Contoh: HUT RI 81"></div>
+                <div class="form-group"><label>Nama Program/Sosial</label><input type="text" id="evt-nama" placeholder="Keterangan Program/Sosial"></div>
                 <div class="form-group"><label>Target Anggaran (Opsional)</label><input type="tel" id="evt-target" placeholder="0" oninput="formatRupiah(this)" style="font-size: 20px; font-weight: 800;"></div>
                 <div class="form-group" style="margin-top: 16px;">
                     <label style="color: var(--primary);">Sifat Pendanaan Program <span style="color:var(--danger)">*</span></label>
                     <input type="hidden" id="evt-sifat-val" value="publik">
                     <div id="evt-sifat-btn" class="custom-select" style="border-radius: 12px; border-color: var(--primary);" onclick="openEvtSifatSelect()">ACARA PUBLIK</div>
                 </div>
-                <div class="form-group" style="margin-bottom: 24px; margin-top: 12px; padding-top: 16px; border-top: 1px dashed var(--border);">
-                    <label>Sumber / Lokasi Dompet Acara <span style="color:var(--danger)">*</span></label>
-                    <input type="hidden" id="evt-dompet-val" value="DP-UTAMA">
-                    <div id="evt-dompet-btn" class="custom-select" style="border-radius: 12px;" onclick="openEvtDompetSelect()">Kas Utama</div>
-                    <div id="evt-new-dompet-wrap" style="display:none; margin-top: 12px;">
-                        <label style="color: var(--primary);">Beri Nama Dompet Baru</label>
-                        <input type="text" id="evt-new-dompet-nama" placeholder="Ketik nama dompet..." style="border-color: var(--primary);">
+                
+                <!-- WRAPPER REGULER (PUBLIK/INTERNAL/HYBRID) -->
+                <div id="wrap-evt-reguler" style="display: block;">
+                    <div class="form-group" style="margin-bottom: 24px; margin-top: 12px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                        <label>Sumber / Lokasi Dompet Acara <span style="color:var(--danger)">*</span></label>
+                        <input type="hidden" id="evt-dompet-val" value="DP-UTAMA">
+                        <div id="evt-dompet-btn" class="custom-select" style="border-radius: 12px;" onclick="openEvtDompetSelect()">Kas Utama</div>
+                        <div id="evt-new-dompet-wrap" style="display:none; margin-top: 12px;">
+                            <label style="color: var(--primary);">Beri Nama Dompet Baru</label>
+                            <input type="text" id="evt-new-dompet-nama" placeholder="Ketik nama dompet..." style="border-color: var(--primary);">
+                        </div>
                     </div>
                 </div>
+
+                <!-- WRAPPER SOSIAL -->
+                <div id="wrap-evt-sosial" style="display: none; background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 14px; padding: 16px; margin-bottom: 24px; margin-top: 16px;">
+                    <div style="font-size: 11px; font-weight: 900; color: #15803D; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> KONFIGURASI DANA SOSIAL</div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="color: #065F46;">Dana Santunan Keluar (Dari Dana Sosial) <span style="color:var(--danger)">*</span></label>
+                        <input type="tel" id="evt-sos-target" placeholder="Rp 0" oninput="formatRupiah(this)" style="font-size: 18px; font-weight: 900; color: #059669; border-color: #A7F3D0;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label style="color: #065F46;">Tarif Iuran (Per Orang) <span style="color:var(--danger)">*</span></label>
+                        <input type="tel" id="evt-sos-tarif" value="5.000" oninput="formatRupiah(this)" style="font-size: 16px; font-weight: 800; border-color: #A7F3D0;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="color: var(--danger);">Pilih Anggota Yang Dijenguk (Beserta Keluarga)<span style="color:var(--text-muted); font-weight: 600;"> Opsional</span></label>
+                        <div id="evt-sos-exclude-list" style="background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; max-height: 200px; overflow-y: auto; padding: 8px;">
+                            <!-- Checkbox List Injected Here -->
+                        </div>
+                    </div>
+                </div>
+
                 <button class="btn btn-primary no-select" style="margin-top: 12px;" onclick="saveEvent()">Buat Program Acara</button>
             </div>
         </div>
@@ -5814,6 +5930,21 @@
                     resetAnggotaForm();
                     renderListAnggota();
 
+                } else if (id === 'mod-event-add') {
+                    // Reset State Form
+                    if(document.getElementById('evt-nama')) document.getElementById('evt-nama').value = '';
+                    if(document.getElementById('evt-target')) document.getElementById('evt-target').value = '';
+                    if(document.getElementById('evt-sos-target')) document.getElementById('evt-sos-target').value = '';
+                    if(document.getElementById('evt-sos-tarif')) document.getElementById('evt-sos-tarif').value = '5.000';
+                    
+                    document.getElementById('evt-sifat-val').value = 'publik';
+                    document.getElementById('evt-sifat-btn').innerText = 'ACARA PUBLIK';
+                    document.getElementById('wrap-evt-reguler').style.display = 'block';
+                    document.getElementById('wrap-evt-sosial').style.display = 'none';
+                    if(document.getElementById('evt-target')) document.getElementById('evt-target').closest('.form-group').style.display = 'block';
+                    
+                    if(typeof renderSosialExcludeList === 'function') renderSosialExcludeList();
+
                 } else if (id === 'mod-trx') {
                     // SURGICAL FIX: Inisialisasi Mutlak State Modal Transaksi (Anti-Blank State)
                     document.getElementById('trx-nom').value = '';
@@ -6180,14 +6311,40 @@
                 let opts = [
                     {label: 'ACARA PUBLIK', value: 'publik'},
                     {label: 'INTERNAL ANGGOTA', value: 'internal'},
-                    {label: 'HYBRID (Sponsor)', value: 'hybrid'}
+                    {label: 'HYBRID (Sponsor)', value: 'hybrid'},
+                    {label: 'SOSIAL (Jenguk Anggota)', value: 'sosial'}
                 ];
                 openSelectModal('Pilih Sifat Acara', opts, document.getElementById('evt-sifat-val').value, (val) => {
                     document.getElementById('evt-sifat-val').value = val;
                     let sel = opts.find(o => o.value === val);
                     document.getElementById('evt-sifat-btn').innerText = sel ? sel.label : 'ACARA PUBLIK';
+                    
+                    // Toggle DOM Visibility berdasarkan Mode Sosial
+                    if (val === 'sosial') {
+                        document.getElementById('wrap-evt-reguler').style.display = 'none';
+                        document.getElementById('wrap-evt-sosial').style.display = 'block';
+                        document.getElementById('evt-target').closest('.form-group').style.display = 'none'; // Sembunyikan target anggaran reguler
+                    } else {
+                        document.getElementById('wrap-evt-reguler').style.display = 'block';
+                        document.getElementById('wrap-evt-sosial').style.display = 'none';
+                        document.getElementById('evt-target').closest('.form-group').style.display = 'block';
+                    }
                 });
             }
+
+            // Fungsi Helper untuk merender daftar anggota (Pengecualian)
+            window.renderSosialExcludeList = function() {
+                let html = '';
+                let sorted = [...state.anggota].sort((a,b) => String(a.nama).localeCompare(String(b.nama)));
+                sorted.forEach(ag => {
+                    html += `
+                    <label style="display: flex; align-items: center; gap: 12px; padding: 10px; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
+                        <input type="checkbox" class="cb-exclude-sosial" value="${ag.id}" style="width: 18px; height: 18px; accent-color: var(--danger); cursor: pointer; padding:0; margin:0; box-shadow:none;">
+                        <span style="font-size: 13px; font-weight: 800; color: #334155; margin:0; padding:0; pointer-events:none;">${esc(ag.nama)}</span>
+                    </label>`;
+                });
+                document.getElementById('evt-sos-exclude-list').innerHTML = html;
+            };
 
             function openEvtDompetSelect() {
                 let opts = state.dompet.filter(d => !d.is_pj && d.status === 'aktif').map(d => ({label: d.nama, value: d.id}));
@@ -6222,50 +6379,119 @@
                 isProcessingMaster = true; // KUNCI MUTLAK DIPINDAHKAN KE PUNCAK SEBELUM TRY-CATCH
                 
                 try {
-                    let newDompet = null;
-
-                    if (dVal === 'BUAT_BARU') {
-                        let dBaruNama = document.getElementById('evt-new-dompet-nama').value.trim();
-                        if(!dBaruNama) return showToast("Ketik nama dompet baru terlebih dahulu!");
-                        
-                        idDompetMapped = genID('DP');
-                        newDompet = { id: idDompetMapped, nama: dBaruNama, status: 'aktif' };
-                    } else if (!dVal) {
-                        idDompetMapped = 'DP-UTAMA';
-                    }
-                    
                     let sifatProg = document.getElementById('evt-sifat-val') ? document.getElementById('evt-sifat-val').value : 'publik';
-                    let ev = { id: genID('EV'), nama: n, target: t, status: 'aktif', id_dompet_default: idDompetMapped, sifat: sifatProg };
-
-                    // SURGICAL FIX: JIT DB Connection Healer
-                    try { idb.transaction('event', 'readonly'); } catch(err) { await initDB(); }
-
-                    // EKSEKUSI ATOMIK MUTLAK (Anti-Corruption & Anti-Orphaned Wallet)
-                    await new Promise((resolve, reject) => {
-                        let stores = ['event'];
-                        if (newDompet) stores.push('dompet');
-                        let tx = idb.transaction(stores, 'readwrite');
-                        
-                        tx.objectStore('event').put(ev);
-                        if (newDompet) tx.objectStore('dompet').put(newDompet);
-                        
-                        tx.oncomplete = resolve;
-                        tx.onerror = () => reject(tx.error);
-                    });
-
-                    // Sinkronisasi RAM mutlak setelah IDB sukses
-                    if (newDompet) state.dompet.push(newDompet);
-                    state.event.push(ev);
                     
-                    // PENGAWALAN DEPENDENSI: Memicu engine sinkronisasi GAS
-                    localStorage.setItem('nav_unsynced', 'true');
-                    
-                    document.getElementById('evt-nama').value = ''; document.getElementById('evt-target').value = '';
-                    closeModal('mod-event-add'); showToast("Program acara baru dibuat."); 
-                    renderAcara();
-                    if(currView==='home') updateDashboard();
+                    // [THE SOCIAL RESPONSE OVERRIDE]: Cabang Eksekusi Khusus Sosial
+                    if (sifatProg === 'sosial') {
+                        let nSosial = `[SOSIAL] ${n}`;
+                        let targetSantunan = getRawRp(document.getElementById('evt-sos-target').value);
+                        let tarifIuran = getRawRp(document.getElementById('evt-sos-tarif').value);
+                        
+                        if (targetSantunan <= 0) return showToast("Gagal: Nominal santunan keluar harus diisi.");
+                        if (tarifIuran <= 0) return showToast("Gagal: Tarif iuran per anggota harus diisi.");
+
+                        // FASE 1: LIQUIDITY BLOCKER (Validasi Kas Utama)
+                        let dIn = 0, dOut = 0, dPend = 0;
+                        state.trx.filter(x => !x.is_deleted && (x.id_dompet === 'DP-UTAMA' || !x.id_dompet)).forEach(x => {
+                            if(x.tipe === 'masuk' || x.tipe === 'iuran') dIn += x.nom_final;
+                            if(x.tipe === 'keluar') { if(x.status === 'pending') dPend += x.nom_awal; else dOut += x.nom_final; }
+                        });
+                        let saldoUtama = dIn - dOut - dPend;
+                        
+                        if (saldoUtama < targetSantunan) {
+                            return showToast(`TOLAK: Saldo Kas Utama (Rp ${fmtRp(saldoUtama)}) tidak cukup untuk mengeluarkan santunan sebesar Rp ${fmtRp(targetSantunan)}.`);
+                        }
+
+                        // Tangkap pengecualian
+                        let excludeIds = [];
+                        document.querySelectorAll('.cb-exclude-sosial:checked').forEach(cb => excludeIds.push(cb.value));
+
+                        // FASE 2: THE ATOMIC CORE TRANSACTION
+                        let tsNow = Date.now();
+                        let currYr = new Date().getFullYear();
+                        let evSos = { id: genID('EV'), nama: nSosial, target: targetSantunan, status: 'aktif', id_dompet_default: 'DP-UTAMA', sifat: 'sosial' };
+                        
+                        let trxOutSantunan = {
+                            id: genID('TX'), ts: tsNow, tipe: 'keluar', nom_awal: targetSantunan, nom_final: targetSantunan,
+                            ket: `Santunan Darurat: ${nSosial} [ALOK:SOS]`, kat: 'Bantuan Sosial', status: 'lunas',
+                            id_event: evSos.id, id_anggota: '', id_dompet: 'DP-UTAMA', is_deleted: false, year: currYr
+                        };
+
+                        let arrPesertaTagihan = [];
+                        let msOffset = 1;
+                        state.anggota.forEach(ag => {
+                            if (!excludeIds.includes(ag.id)) {
+                                arrPesertaTagihan.push({
+                                    id: genID('PST'), ts: tsNow + msOffset, tipe: 'peserta', nom_awal: tarifIuran, nom_final: 0,
+                                    ket: `Peserta: ${ag.nama} | Varian: Iuran Sosial`, kat: 'Partisipasi / Pesanan', status: 'tagihan',
+                                    id_event: evSos.id, id_anggota: ag.id, id_dompet: '', is_deleted: false, year: currYr
+                                });
+                                msOffset++;
+                            }
+                        });
+
+                        try { idb.transaction(['event', 'trx'], 'readonly'); } catch(err) { await initDB(); }
+
+                        await new Promise((resolve, reject) => {
+                            let tx = idb.transaction(['event', 'trx'], 'readwrite');
+                            tx.objectStore('event').put(evSos);
+                            tx.objectStore('trx').put(trxOutSantunan);
+                            arrPesertaTagihan.forEach(p => tx.objectStore('trx').put(p));
+                            tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+                        });
+
+                        state.event.push(evSos);
+                        state.trx.unshift(trxOutSantunan);
+                        arrPesertaTagihan.forEach(p => state.trx.unshift(p));
+                        
+                        localStorage.setItem('nav_unsynced', 'true');
+                        document.getElementById('evt-nama').value = ''; document.getElementById('evt-sos-target').value = '';
+                        closeModal('mod-event-add'); showToast("Program Sosial Dijalankan. Tagihan Terkirim.");
+                        
+                        renderAcara();
+                        if(currView==='home') updateDashboard();
+                        
+                    } else {
+                        // [JALUR REGULER]: Publik / Internal / Hybrid
+                        let newDompet = null;
+
+                        if (dVal === 'BUAT_BARU') {
+                            let dBaruNama = document.getElementById('evt-new-dompet-nama').value.trim();
+                            if(!dBaruNama) return showToast("Ketik nama dompet baru terlebih dahulu!");
+                            
+                            idDompetMapped = genID('DP');
+                            newDompet = { id: idDompetMapped, nama: dBaruNama, status: 'aktif' };
+                        } else if (!dVal) {
+                            idDompetMapped = 'DP-UTAMA';
+                        }
+                        
+                        let ev = { id: genID('EV'), nama: n, target: t, status: 'aktif', id_dompet_default: idDompetMapped, sifat: sifatProg };
+
+                        try { idb.transaction(['event', 'dompet'], 'readonly'); } catch(err) { await initDB(); }
+
+                        await new Promise((resolve, reject) => {
+                            let stores = ['event'];
+                            if (newDompet) stores.push('dompet');
+                            let tx = idb.transaction(stores, 'readwrite');
+                            
+                            tx.objectStore('event').put(ev);
+                            if (newDompet) tx.objectStore('dompet').put(newDompet);
+                            
+                            tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+                        });
+
+                        if (newDompet) state.dompet.push(newDompet);
+                        state.event.push(ev);
+                        
+                        localStorage.setItem('nav_unsynced', 'true');
+                        document.getElementById('evt-nama').value = ''; document.getElementById('evt-target').value = '';
+                        closeModal('mod-event-add'); showToast("Program acara reguler berhasil dibuat."); 
+                        
+                        renderAcara();
+                        if(currView==='home') updateDashboard();
+                    }
                 } catch (e) { 
-                    showToast("Gagal menginisiasi program acara."); 
+                    showToast("Gagal menginisiasi program."); 
                 } finally { 
                     isProcessingMaster = false; 
                 }
@@ -6401,14 +6627,26 @@
                         let idDompetProgram = ev.id_dompet_default || 'DP-UTAMA';
                         let namaDompetProgram = state.dompet.find(d => d.id === idDompetProgram)?.nama || 'Kas Utama';
 
-                        let sifatLabel = rawSifat === 'internal' ? 'INTERNAL ANGGOTA' : (rawSifat === 'hybrid' ? 'HYBRID' : 'ACARA PUBLIK');
-                        let sifatBg = rawSifat === 'internal' ? '#EFF6FF' : '#FAF5FF';
-                        let sifatColor = rawSifat === 'internal' ? '#1D4ED8' : '#7E22CE';
-                        let sifatBorder = rawSifat === 'internal' ? '#BFDBFE' : '#E9D5FF';
+                        let sifatLabel = rawSifat === 'sosial' ? 'SOSIAL' : (rawSifat === 'internal' ? 'INTERNAL ANGGOTA' : (rawSifat === 'hybrid' ? 'HYBRID' : 'ACARA PUBLIK'));
+                        let sifatBg = rawSifat === 'sosial' ? '#ECFDF5' : (rawSifat === 'internal' ? '#EFF6FF' : '#FAF5FF');
+                        let sifatColor = rawSifat === 'sosial' ? '#059669' : (rawSifat === 'internal' ? '#1D4ED8' : '#7E22CE');
+                        let sifatBorder = rawSifat === 'sosial' ? '#A7F3D0' : (rawSifat === 'internal' ? '#BFDBFE' : '#E9D5FF');
                         let sifatBadge = `<div style="font-size: 9px; font-weight: 800; letter-spacing: 0.5px; background: ${sifatBg}; border: 1px solid ${sifatBorder}; color: ${sifatColor}; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">${sifatLabel}</div>`;
 
+                        let isSosialMode = rawSifat === 'sosial';
+                        
+                        // Khusus Sosial, Bar Kemajuan membandingkan Uang Pendaftar vs Uang Santunan yang keluar
+                        if (isSosialMode) {
+                            let totalTerkumpulSosial = 0;
+                            (eventTrxMap[ev.id] || []).forEach(t => {
+                                if (t.tipe === 'peserta' && !t.is_deleted) totalTerkumpulSosial += t.nom_final;
+                            });
+                            rawPct = ev.target > 0 ? Math.round((totalTerkumpulSosial / ev.target) * 100) : 0;
+                            barPct = Math.min(100, rawPct);
+                        }
+
                         hActive += `
-                        <div class="no-select" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 20px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); position: relative; overflow: hidden;">
+                        <div class="no-select" style="background: #FFFFFF; border: 1px solid ${isSosialMode ? '#A7F3D0' : '#E2E8F0'}; border-radius: 20px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); position: relative; overflow: hidden;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                                 <div style="font-size: 17px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: -0.5px; line-height: 1.3; flex: 1; padding-right: 12px; word-break: break-word;">${esc(ev.nama)}</div>
                                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
@@ -6483,6 +6721,15 @@
                             })()}
 
                             <div style="display: flex; gap: 8px; position: relative; z-index: 10; flex-wrap: wrap;">
+                                
+                                ${isSosialMode ? `
+                                <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 100%; background: #10B981; color: white; border: none; font-size: 12px; font-weight: 900; padding: 16px; border-radius: 12px; cursor: pointer; box-shadow: 0 6px 15px rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openSosialTap === 'function') window.openSosialTap('${ev.id}')">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ABSENSI & TERIMA IURAN SOSIAL
+                                </button>
+                                <button class="btn no-select" style="flex: 1; min-width: 130px; background: #FFFFFF; color: #059669; border: 1.5px solid #059669; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openKelolaPeserta === 'function') window.openKelolaPeserta('${ev.id}')">
+                                    DATA PESERTA (PIUTANG)
+                                </button>
+                                ` : `
                                 ${(rawSifat === 'internal' || rawSifat === 'hybrid') ? `
                                 <button class="btn no-select" style="flex: 1; min-width: 130px; background: #1E3A8A; color: white; border: none; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(30,58,138,0.2);" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openKelolaPeserta === 'function') window.openKelolaPeserta('${ev.id}')">
                                     DATA PESERTA
@@ -6498,6 +6745,7 @@
                                 <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 130px; background: #FFFFFF; color: #1E3A8A; border: 1.5px solid #1E3A8A; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openPjAdvance === 'function') window.openPjAdvance('${ev.id}')">
                                     CAIRKAN PJ
                                 </button>
+                                `}
 
                                 <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 130px; background: #F8FAFC; color: #0F172A; border: 1.5px solid #CBD5E1; font-size: 11px; font-weight: 900; padding: 14px 8px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center;" onclick="event.preventDefault(); event.stopPropagation(); generateEventLPJ('${ev.id}')">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 6px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> CETAK LPJ (PDF)
@@ -6813,14 +7061,18 @@
                         // 1. Musnahkan Program Acara
                         tx.objectStore('event').delete(id);
                         
-                        // 2. Putuskan Keterikatan (Detach) Transaksi yang masih selamat
+                        // 2. Putuskan Keterikatan (Detach) Transaksi yang masih selamat & Anihilasi Zombie Peserta
                         const storeTrx = tx.objectStore('trx');
                         fullTrxToDetach.forEach(dbTrx => {
-                            let newDompet = dompetPjIds.includes(dbTrx.id_dompet) ? 'DP-UTAMA' : dbTrx.id_dompet;
-                            let newEvent = dbTrx.id_event === id ? '' : dbTrx.id_event;
-                            let t_update = {...dbTrx, id_event: newEvent, id_dompet: newDompet, ket: dbTrx.ket + ' [Program Dimusnahkan]'};
-                            storeTrx.put(t_update);
-                            successDetachedTrx.push(t_update);
+                            if (dbTrx.tipe === 'peserta') {
+                                storeTrx.delete(dbTrx.id); // SURGICAL FIX: Eksekusi mati (Purge) Zombie Invoice dari IDB
+                            } else {
+                                let newDompet = dompetPjIds.includes(dbTrx.id_dompet) ? 'DP-UTAMA' : dbTrx.id_dompet;
+                                let newEvent = dbTrx.id_event === id ? '' : dbTrx.id_event;
+                                let t_update = {...dbTrx, id_event: newEvent, id_dompet: newDompet, ket: dbTrx.ket + ' [Program Dimusnahkan]'};
+                                storeTrx.put(t_update);
+                                successDetachedTrx.push(t_update);
+                            }
                         });
                         
                         // 3. Sapu Bersih Dompet Hantu (Phantom Wallets)
@@ -6833,6 +7085,7 @@
 
                     // Update memory (State RAM) HANYA setelah IndexedDB sukses 100% (Atomic Pass)
                     state.event = state.event.filter(e => e.id !== id);
+                    state.trx = state.trx.filter(t => !(t.id_event === id && t.tipe === 'peserta')); // SURGICAL FIX: Anihilasi Zombie dari State RAM
                     
                     let stateTrxMap = new Map();
                     state.trx.forEach((t, i) => stateTrxMap.set(t.id, i));
@@ -9711,6 +9964,7 @@
                             tx.oncomplete = resolve;
                             tx.onerror = () => reject(tx.error);
                         });
+    
 
                         localStorage.setItem('nav_unsynced', 'true');
                         let safeIdxTalangan = state.trx.findIndex(x => x.id === id);
@@ -9722,8 +9976,7 @@
                         let tsNow = Date.now();
                         let yrNow = new Date().getFullYear();
                         let sisa = state.trx[idx].nom_awal - final;
-                        
-                        // SURGICAL FIX: Set nom_final menjadi pengeluaran aktual untuk akurasi Analitik Dashboard
+                                          // SURGICAL FIX: Set nom_final menjadi pengeluaran aktual untuk akurasi Analitik Dashboard
                         // THE CATEGORY PRESERVATION PATCH: Mewariskan kategori asli mutasi agar tidak merusak diagram pie chart LPJ
                         let t_update = { ...(originalDbTrx || state.trx[idx]), nom_final: final, status: 'lunas', kat: state.trx[idx].kat, ket: state.trx[idx].ket + addKet + " [Telah Di-Settle]" };
                         let trxToSave = [t_update];
@@ -11863,7 +12116,8 @@
                 // [SURGICAL FIX] Menghancurkan <TFOOT> dan menyuntikkan Teks Total ke dalam <tbody>
                 // untuk mencegah tabel tercetak dobel pada setiap perpindahan halaman
                 
-                let textSisaKas = sisaKas >= 0 ? 'KEKAYAAN BERSIH ACARA (SURPLUS)' : 'KEKURANGAN KAS ACARA (DEFISIT / PANITIA NOMBOK)';
+                let isSosialPdf = (ev.sifat === 'sosial');
+                let textSisaKas = sisaKas >= 0 ? 'KEKAYAAN BERSIH ACARA (SURPLUS)' : (isSosialPdf ? 'PIUTANG KAS ORGANISASI (IURAN WARGA BELUM TERKUMPUL)' : 'KEKURANGAN KAS ACARA (DEFISIT / PANITIA NOMBOK)');
                 let hasReconciliation = totalDanaDiTangan > 0 || totalHutangTalangan > 0;
                 let bottomBorderStr = hasReconciliation ? '1px solid #000' : 'none';
 
@@ -12103,15 +12357,32 @@
                 let arrBulan = []; let totalBulan = 0;
 
                 let iuranMapGlobal = {};
-                state.trx.forEach(t => { if (t.tipe === 'iuran' && !t.is_deleted) iuranMapGlobal[`${t.id_anggota}-${t.year}-${t.bln}`] = true; });
+                let mapAcaraSosial = {}; // The Aggregator Cache
+                let utangSosialCount = 0;
+                let utangSosialNominal = 0;
+                let arrNamaSosial = [];
 
-                // SURGICAL FIX: Injeksi Kapsul Waktu Arsip agar anggota tidak ditagih utang hantu setelah Tutup Buku Tahunan
+                state.trx.forEach(t => { 
+                    if (t.is_deleted) return;
+                    if (t.tipe === 'iuran') {
+                        iuranMapGlobal[`${t.id_anggota}-${t.year}-${t.bln}`] = true; 
+                    } else if (t.tipe === 'peserta' && t.id_anggota === memberId && t.nom_final < t.nom_awal) {
+                        // Tarik data event
+                        let evData = state.event.find(e => e.id === t.id_event);
+                        if (evData && evData.sifat === 'sosial' && evData.status !== 'arsip') {
+                            utangSosialCount++;
+                            utangSosialNominal += (t.nom_awal - t.nom_final);
+                            let nm = String(evData.nama).replace(/\[SOSIAL\]/i, '').trim();
+                            arrNamaSosial.push(nm);
+                        }
+                    }
+                });
+
                 if (ag.arsip_iuran_map) {
                     ag.arsip_iuran_map.forEach(ym => { iuranMapGlobal[`${memberId}-${ym}`] = true; });
                 }
 
                 for(let y = jY; y <= currY; y++) {
-                    // SURGICAL FIX: Grace Period limit (currM - 1) untuk tahun berjalan agar Executive Billing aman.
                     let startM = (y === jY) ? jB : 1; let endM = (y === currY) ? currM - 1 : 12; 
                     for(let m = startM; m <= endM; m++) {
                         if (!iuranMapGlobal[`${memberId}-${y}-${m}`]) {
@@ -12122,7 +12393,20 @@
                     }
                 }
 
-                return { text: arrBulan.join(', '), count: totalBulan, nominal: totalBulan * tarifIuran };
+                let finalNominal = (totalBulan * tarifIuran) + utangSosialNominal;
+                let finalCount = totalBulan + utangSosialCount;
+                let finalText = '';
+
+                // Agregator Teks Berbasis Kondisi
+                if (totalBulan > 0 && utangSosialCount > 0) {
+                    finalText = `Kas Rutin: ${arrBulan.join(', ')} | Sosial: ${arrNamaSosial.join(', ')} (Total ${finalCount} Item)`;
+                } else if (totalBulan > 0) {
+                    finalText = arrBulan.join(', ');
+                } else if (utangSosialCount > 0) {
+                    finalText = `Iuran Darurat/Sosial: ${arrNamaSosial.join(', ')}`;
+                }
+
+                return { text: finalText, count: finalCount, nominal: finalNominal };
             }
 
             function getBirthdayMessage(member, isDefisit, arrearsText, nomText) {
@@ -12724,6 +13008,161 @@
                 if(ssDate) ssDate.innerText = `${now.getDate()} ${bln[now.getMonth()]} ${now.getFullYear()}`;
             }, 1000);
 
+            // ==========================================
+            // THE SOCIAL TAPPING SYSTEM (UI & LOGIC)
+            // ==========================================
+            window.openSosialTap = function(idEvent) {
+                if(isKiosk) return showToast("DITOLAK: Akses ilegal terdeteksi.");
+                let evData = state.event.find(e => e.id === idEvent);
+                if (!evData) return;
+
+                // Cek atau buat DOM Modal
+                if (!document.getElementById('mod-sosial-tap')) {
+                    document.body.insertAdjacentHTML('beforeend', `
+                        <div id="mod-sosial-tap" class="modal" style="z-index: 4010;">
+                            <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh;">
+                                <div style="background: var(--surface); padding: 20px 24px 16px 24px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); border-radius: 24px 24px 0 0;">
+                                    <button class="close-modal" style="top: 16px;" onclick="closeModal('mod-sosial-tap')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                                    <h3 style="font-size: 18px; font-weight: 900; color: #059669; display:flex; align-items:center; gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Absensi Sosial</h3>
+                                    <div id="tap-sosial-title" style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 4px;">Nama Acara</div>
+                                </div>
+                                <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+                                    <div style="font-size: 10px; font-weight: 800; color: #64748B; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">Ketuk nama untuk melunasi iuran:</div>
+                                    <div id="tap-sosial-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                }
+
+                document.getElementById('tap-sosial-title').innerText = String(evData.nama).replace(/\[SOSIAL\]/i, '').trim();
+
+                let html = '';
+                let pesertaTrx = state.trx.filter(t => !t.is_deleted && t.tipe === 'peserta' && t.id_event === idEvent);
+                
+                // Urutkan berdasarkan nama abjad (Mengambil dari cache state anggota)
+                pesertaTrx.sort((a,b) => {
+                    let nmA = state.anggota.find(ag=>ag.id === a.id_anggota)?.nama || '';
+                    let nmB = state.anggota.find(ag=>ag.id === b.id_anggota)?.nama || '';
+                    return nmA.localeCompare(nmB);
+                });
+
+                if (pesertaTrx.length === 0) {
+                    html = '<div style="grid-column: span 2; text-align:center; padding: 20px; font-size:11px; color:#94A3B8; border:1.5px dashed #CBD5E1; border-radius:12px;">Tidak ada tagihan tertinggal.</div>';
+                } else {
+                    pesertaTrx.forEach(t => {
+                        let isLunas = t.nom_final >= t.nom_awal;
+                        let infoArr = t.ket.split('|');
+                        let pNama = infoArr.shift().replace('Peserta:', '').trim();
+                        let nmAwal = t.nom_awal; // Nominal Tarif Iuran
+                        
+                        let bgCol = isLunas ? '#10B981' : '#F1F5F9';
+                        let txtCol = isLunas ? '#FFFFFF' : '#475569';
+                        let borderCol = isLunas ? '#059669' : '#CBD5E1';
+                        let svgIcon = isLunas 
+                            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>` 
+                            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/></svg>`;
+
+                        html += `
+                        <div class="no-select" style="background: ${bgCol}; color: ${txtCol}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 12px 10px; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: space-between; box-shadow: ${isLunas ? '0 4px 10px rgba(16,185,129,0.3)' : 'inset 0 2px 4px rgba(0,0,0,0.02)'};" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onclick="executeSosialTap('${t.id}')">
+                            <div style="font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px;">${esc(pNama)}</div>
+                            ${svgIcon}
+                        </div>`;
+                    });
+                }
+
+                document.getElementById('tap-sosial-grid').innerHTML = html;
+                openModal('mod-sosial-tap');
+            };
+
+            window.executeSosialTap = async function(idPeserta) {
+                if (window.isProcessingTransaction) return;
+                
+                let pst = state.trx.find(t => t.id === idPeserta);
+                if (!pst) return;
+
+                window.isProcessingTransaction = true;
+                pulseHaptic('light');
+
+                try {
+                    let evData = state.event.find(e => e.id === pst.id_event);
+                    let targetDompet = (evData && evData.id_dompet_default) ? evData.id_dompet_default : 'DP-UTAMA';
+                    let namaPeserta = pst.ket.split('|')[0].replace('Peserta:', '').trim();
+                    let isLunas = pst.nom_final >= pst.nom_awal;
+
+                    try { idb.transaction('trx', 'readonly'); } catch(err) { await initDB(); }
+
+                    if (!isLunas) {
+                        // 1. Eksekusi Pembayaran (Uang Masuk)
+                        let bayar = pst.nom_awal;
+                        let pstUpdate = { ...pst, nom_final: bayar };
+                        
+                        let tIn = {
+                            id: genID('TX'), ts: Date.now(), tipe: 'masuk',
+                            nom_awal: bayar, nom_final: bayar, 
+                            ket: `Iuran Sosial: ${namaPeserta} [ID:${pst.id}] [ALOK:SOS]`, kat: 'Pembayaran Program', status: 'lunas',
+                            id_event: pst.id_event, id_anggota: pst.id_anggota, id_dompet: targetDompet, is_deleted: false, year: new Date().getFullYear()
+                        };
+
+                        await new Promise((resolve, reject) => {
+                            let tx = idb.transaction('trx', 'readwrite');
+                            tx.objectStore('trx').put(pstUpdate);
+                            tx.objectStore('trx').put(tIn);
+                            tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+                        });
+
+                        localStorage.setItem('nav_unsynced', 'true');
+                        let idx = state.trx.findIndex(t => t.id === pst.id);
+                        if(idx > -1) state.trx[idx] = pstUpdate;
+                        state.trx.unshift(tIn);
+
+                    } else {
+                        // 2. Eksekusi Batal Pembayaran (Rollback Void)
+                        // Cari transaksi uang masuk yang membawa flag [ID:PST-XXXX]
+                        let tInMatchIdx = state.trx.findIndex(t => t.tipe === 'masuk' && !t.is_deleted && t.kat === 'Pembayaran Program' && String(t.ket).includes(`[ID:${pst.id}]`));
+                        
+                        if (tInMatchIdx > -1) {
+                            // PROTEKSI ANTI-DEFISIT (Mencegah batal bayar jika kas SOS sudah minus)
+                            let tInCek = state.trx[tInMatchIdx];
+                            let dIn = 0, dOut = 0, dPend = 0;
+                            state.trx.filter(x => !x.is_deleted && (x.id_dompet === targetDompet || (!x.id_dompet && targetDompet === 'DP-UTAMA'))).forEach(x => {
+                                if(x.tipe === 'masuk' || x.tipe === 'iuran') dIn += x.nom_final;
+                                if(x.tipe === 'keluar') { if(x.status === 'pending') dPend += x.nom_awal; else dOut += x.nom_final; }
+                            });
+                            if ((dIn - dOut - dPend) < tInCek.nom_final) {
+                                window.isProcessingTransaction = false;
+                                return showToast("GAGAL VOID: Saldo Dompet tidak cukup untuk menarik uang kembali.");
+                            }
+
+                            let pstUpdate = { ...pst, nom_final: 0 };
+                            let tInVoid = { ...tInCek, is_deleted: true };
+
+                            await new Promise((resolve, reject) => {
+                                let tx = idb.transaction('trx', 'readwrite');
+                                tx.objectStore('trx').put(pstUpdate);
+                                tx.objectStore('trx').put(tInVoid);
+                                tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+                            });
+
+                            localStorage.setItem('nav_unsynced', 'true');
+                            let idxPst = state.trx.findIndex(t => t.id === pst.id);
+                            if(idxPst > -1) state.trx[idxPst] = pstUpdate;
+                            state.trx[tInMatchIdx] = tInVoid;
+                        }
+                    }
+
+                    // Re-render UI Siluman (Tanpa loading screen)
+                    window.openSosialTap(pst.id_event);
+                    if(typeof updateDashboard === 'function') updateDashboard(); 
+                    if(typeof renderAcara === 'function') renderAcara(); 
+
+                } catch(e) {
+                    showToast("Gagal memproses tap absensi.");
+                } finally {
+                    window.isProcessingTransaction = false;
+                }
+            };
         </script>
 </body>
-</html>
+</html>    
+  
