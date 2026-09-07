@@ -355,7 +355,7 @@
             document.head.appendChild(curtain);
         }
 
-        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbwY_l5u-gHsnuCQ6pCYStdGWtTYbkVL7DyrPMcCg3ZH9y9bSkxfdgnTwWgheSDl6HK-/exec";
+        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbywG1zo6CmabeWEOPidNGTv5SJ-gh2uORBwIy1VWHwOnjKJsdDztb2S9pMqyRJyfm0iYQ/exec";
         const CLOUD_API_TOKEN = "Navasena29082026";
 
         // --- KONFIGURASI INDEXEDDB LOKAL ---
@@ -1462,11 +1462,12 @@
                 let saldoDompet = dompetMap[d.id].in - dompetMap[d.id].out - dompetMap[d.id].pend;
                 let bgStyle = d.id === 'DP-UTAMA' ? 'background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white;' : 'background: var(--surface); border: 1.5px solid var(--border); color: var(--text-main);';
                 let textSub = d.id === 'DP-UTAMA' ? 'color: #BFDBFE;' : 'color: var(--text-muted);';
+                let titleCard = d.id === 'DP-UTAMA' ? `KAS <span class="font-nasa" style="font-size: 1.2em; letter-spacing: 0.5px;">NAVASENA</span>` : esc(d.nama);
                 
                 dompetHtml += `
                 <div class="no-select" style="flex: 0 0 160px; scroll-snap-align: start; ${bgStyle} padding: 16px; border-radius: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; cursor: ${d.id === 'DP-UTAMA' ? 'pointer' : 'default'}; transition: 0.2s;" ${d.id === 'DP-UTAMA' ? 'onclick="if(typeof openKasUtamaDrilldown === \'function\') openKasUtamaDrilldown()" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'"' : ''}>
                     ${d.id === 'DP-UTAMA' ? '<div style="position: absolute; right: -20px; top: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div><div style="position: absolute; right: 12px; top: 12px; background: rgba(255,255,255,0.2); padding: 4px; border-radius: 50%;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 3 21 3 21 9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><line x1="21" y1="3" x2="14" y2="10"/></svg></div>' : ''}
-                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; ${textSub} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 2;">${esc(d.nama)}</div>
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; ${textSub} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 2;">${titleCard}</div>
                     <div style="font-size: 16px; font-weight: 900; position: relative; z-index: 2; letter-spacing: -0.5px;">Rp ${fmtRp(saldoDompet)}</div>
                 </div>`;
             });
@@ -4614,14 +4615,14 @@
         </div>
 
         <!-- MODAL DRILLDOWN KAS UTAMA (FRACTIONAL LEDGER) -->
-        <div id="mod-kas-utama-drilldown" class="modal" style="z-index: 4020;">
+  <div id="mod-kas-utama-drilldown" class="modal" style="z-index: 4020;">
             <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh;">
                 <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); padding: 20px 24px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); border-radius: 24px 24px 0 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <h3 style="font-size: 18px; font-weight: 900; color: #FFFFFF; display: flex; align-items: center; gap: 8px;">Rincian Kas Utama</h3>
+                        <h3 style="font-size: 18px; font-weight: 900; color: #FFFFFF; display: flex; align-items: center; gap: 8px;">Rincian Kas <span class="font-nasa" style="font-size: 1.2em; letter-spacing: 0.5px;">NAVASENA</span></h3>
                         <button class="close-modal" style="position: static; background: rgba(255,255,255,0.2); color: white; border: none;" onclick="closeModal('mod-kas-utama-drilldown')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                     </div>
-                    <div style="font-size: 11px; color: #BFDBFE; font-weight: 600;">Total Uang Keseluruhan</div>
+                    <div style="font-size: 11px; color: #BFDBFE; font-weight: 600;">Total Uang Iuran Keseluruhan</div>
                     <div id="ku-total-fisik" style="font-size: 28px; font-weight: 900; color: #FFFFFF; margin-top: 4px; letter-spacing: -1px;">Rp 0</div>
                 </div>
                 <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
@@ -4693,7 +4694,7 @@
                     openSelectModal('Pilih Sumber Alokasi', opts, valEl.value, (val) => {
                         valEl.value = val;
                         let sel = opts.find(o => o.value === val);
-                        btnEl.innerHTML = sel ? `<div style="display:flex; align-items:center; gap:8px;">${sel.icon} ${sel.label}</div>` : `<div style="display:flex; align-items:center; gap:8px;">${svgBbs} Dana Bebas (Kas Utama)</div>`;
+                        btnEl.innerHTML = sel ? `<div style="display:flex; align-items:center; gap:8px;">${sel.icon} ${sel.label}</div>` : `<div style="display:flex; align-items:center; gap:8px;">${svgBbs} Dana Bebas</div>`;
                     });
                 }
             };
@@ -4737,8 +4738,7 @@ if (tipe === 'KEG') {
                     title = 'FUNGSI DANA SOSIAL'; color = '#059669';
                     icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>`;
                     html = `
-                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Alokasi khusus sebagai bentuk kepedulian sosial untuk menjenguk anggota aktif NAVASENA  yang sakit atau diopname.</div>
-                        
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Alokasi khusus sebagai bentuk kepedulian sosial untuk menjenguk anggota aktif <span class="font-nasa" style="font-size: 1.2em; letter-spacing: 0.5px;">NAVASENA</span>  yang sakit atau diopname.</div>                        
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                             <div style="background: #ECFDF5; border: 1.5px solid #A7F3D0; border-radius: 12px; padding: 14px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'">
                                 <div style="font-size: 9.5px; font-weight: 900; color: #059669; text-transform: uppercase; margin-bottom: 4px;">Anggaran Jenguk</div>
@@ -4780,7 +4780,7 @@ if (tipe === 'KEG') {
                         <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Dukungan finansial untuk memenuhi kebutuhan operasional dan administrasi rutin.</div>
                         
                         <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 14px; padding: 16px; margin-bottom: 16px; position: relative; overflow: hidden; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
-                            <div style="position: absolute; right: -10px; top: -10px; color: #FEF3C7;"><svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                            <div style="position: absolute; right: -15px; bottom: -15px; color: #FDE68A; opacity: 0.35; z-index: 0; pointer-events: none; transform: rotate(-5deg);"><svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                             <div style="font-size: 10px; font-weight: 900; color: #D97706; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; position: relative; z-index: 2;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> ALOKASI RUTIN BULANAN</div>
                             <div style="font-size: 14px; font-weight: 800; color: #92400E; margin-bottom: 2px; position: relative; z-index: 2;">ANGGARAN UANG MEJA</div>
                             <div style="font-size: 26px; font-weight: 900; color: #B45309; letter-spacing: -1px; margin-bottom: 6px; position: relative; z-index: 2;">Rp 75.000</div>
@@ -5025,7 +5025,7 @@ if (tipe === 'KEG') {
                         
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2;">
                             <div>
-                                <div style="font-size: 11px; font-weight: 900; color: #475569; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Dana Bebas (Donasi)</div>
+                                <div style="font-size: 11px; font-weight: 900; color: #475569; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Dana Bebas</div>
                                 <div style="font-size: 9px; font-weight: 700; color: #94A3B8; margin-top: 4px;">Dana tidak terikat pecahan iuran</div>
                             </div>
                             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -6312,7 +6312,7 @@ if (tipe === 'KEG') {
                     {label: 'ACARA PUBLIK', value: 'publik'},
                     {label: 'INTERNAL ANGGOTA', value: 'internal'},
                     {label: 'HYBRID (Sponsor)', value: 'hybrid'},
-                    {label: 'SOSIAL (Jenguk Anggota)', value: 'sosial'}
+                    {label: 'SOSIAL', value: 'sosial'}
                 ];
                 openSelectModal('Pilih Sifat Acara', opts, document.getElementById('evt-sifat-val').value, (val) => {
                     document.getElementById('evt-sifat-val').value = val;
@@ -6531,9 +6531,8 @@ if (tipe === 'KEG') {
                                 inAmt += t.nom_final; 
                                 
                                 let katLow = String(t.kat || '').toLowerCase();
-                                if (ev.sifat === 'hybrid' && katLow.includes('sponsor')) {
-                                    danaEksternalAmt += t.nom_final; 
-                                } else if ((!ev.sifat || ev.sifat === 'publik') && katLow.includes('donasi')) {
+                                // [SURGICAL FIX]: Gabungkan seluruh penangkapan dana eksternal agar tidak ada yang bocor akibat konversi Sifat.
+                                if (katLow.includes('sponsor') || katLow.includes('donasi')) {
                                     danaEksternalAmt += t.nom_final; 
                                 }
                             }
@@ -6553,14 +6552,9 @@ if (tipe === 'KEG') {
 
                         // --- THE SHADOW ENTITY: DYNAMIC BADGE LOGIC (SMART HIDE) ---
                         let badgeDanaEksternal = '';
-                        if (rawSifat === 'hybrid') {
-                            if (danaEksternalAmt > 0) {
-                                badgeDanaEksternal = `<div style="font-size: 9px; font-weight: 800; color: #059669; background: #D1FAE5; padding: 4px 6px; border-radius: 6px; display: inline-block; align-self: flex-start; border: 1px solid #A7F3D0; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.05); margin-top: 4px;">Total Sponsor: <span style="white-space: nowrap;">Rp ${fmtRp(danaEksternalAmt)}</span></div>`;
-                            }
-                        } else if (rawSifat !== 'internal') {
-                            if (danaEksternalAmt > 0) {
-                                badgeDanaEksternal = `<div style="font-size: 9px; font-weight: 800; color: #059669; background: #D1FAE5; padding: 4px 6px; border-radius: 6px; display: inline-block; align-self: flex-start; border: 1px solid #A7F3D0; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.05); margin-top: 4px;">Total Donasi: <span style="white-space: nowrap;">Rp ${fmtRp(danaEksternalAmt)}</span></div>`;
-                            }
+                        if (danaEksternalAmt > 0 && rawSifat !== 'internal') {
+                            let lblEksternal = rawSifat === 'hybrid' ? 'Sponsor/Donasi' : 'Total Donasi';
+                            badgeDanaEksternal = `<div style="font-size: 9px; font-weight: 800; color: #059669; background: #D1FAE5; padding: 4px 6px; border-radius: 6px; display: inline-block; align-self: flex-start; border: 1px solid #A7F3D0; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.05); margin-top: 4px;">${lblEksternal}: <span style="white-space: nowrap;">Rp ${fmtRp(danaEksternalAmt)}</span></div>`;
                         }
 
                         let allPjDompets = state.dompet.filter(d => d.id_event === ev.id && d.is_pj && d.status === 'aktif');
@@ -6730,7 +6724,8 @@ if (tipe === 'KEG') {
                                     DATA PESERTA (PIUTANG)
                                 </button>
                                 ` : `
-                                ${(rawSifat === 'internal' || rawSifat === 'hybrid') ? `
+
+                                ${(rawSifat === 'internal' || rawSifat === 'hybrid' || rawSifat === 'publik') ? `
                                 <button class="btn no-select" style="flex: 1; min-width: 130px; background: #1E3A8A; color: white; border: none; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(30,58,138,0.2);" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openKelolaPeserta === 'function') window.openKelolaPeserta('${ev.id}')">
                                     DATA PESERTA
                                 </button>
@@ -7066,6 +7061,10 @@ if (tipe === 'KEG') {
                         fullTrxToDetach.forEach(dbTrx => {
                             if (dbTrx.tipe === 'peserta') {
                                 storeTrx.delete(dbTrx.id); // SURGICAL FIX: Eksekusi mati (Purge) Zombie Invoice dari IDB
+                            } else if (dbTrx.id_event === id && dbTrx.kat === 'Bantuan Sosial' && String(dbTrx.ket).includes('Santunan Darurat:')) {
+                                storeTrx.delete(dbTrx.id); // SURGICAL FIX: Musnahkan transaksi Induk Dana Sosial
+                            } else if (dbTrx.id_event === id && dbTrx.tipe === 'masuk' && dbTrx.kat === 'Pembayaran Program' && String(dbTrx.ket).includes('Iuran Sosial:')) {
+                                storeTrx.delete(dbTrx.id); // SURGICAL FIX: Musnahkan pembayaran Iuran Sosial yang terikat
                             } else {
                                 let newDompet = dompetPjIds.includes(dbTrx.id_dompet) ? 'DP-UTAMA' : dbTrx.id_dompet;
                                 let newEvent = dbTrx.id_event === id ? '' : dbTrx.id_event;
@@ -7085,7 +7084,13 @@ if (tipe === 'KEG') {
 
                     // Update memory (State RAM) HANYA setelah IndexedDB sukses 100% (Atomic Pass)
                     state.event = state.event.filter(e => e.id !== id);
-                    state.trx = state.trx.filter(t => !(t.id_event === id && t.tipe === 'peserta')); // SURGICAL FIX: Anihilasi Zombie dari State RAM
+                    state.trx = state.trx.filter(t => {
+                        if (t.id_event !== id) return true;
+                        if (t.tipe === 'peserta') return false;
+                        if (t.kat === 'Bantuan Sosial' && String(t.ket).includes('Santunan Darurat:')) return false;
+                        if (t.tipe === 'masuk' && t.kat === 'Pembayaran Program' && String(t.ket).includes('Iuran Sosial:')) return false;
+                        return true;
+                    });
                     
                     let stateTrxMap = new Map();
                     state.trx.forEach((t, i) => stateTrxMap.set(t.id, i));
@@ -7945,6 +7950,7 @@ if (tipe === 'KEG') {
                         const tx = idb.transaction('aspirasi', 'readonly');
                         const req = tx.objectStore('aspirasi').getAll();
                         req.onsuccess = () => resolve(req.result || []);
+                        req.onerror = () => resolve([]);
                     });
                     
                     let html = '';
@@ -8092,7 +8098,11 @@ if (tipe === 'KEG') {
                     // SURGICAL FIX: JIT DB Connection Healer
                     try { idb.transaction('dompet', 'readonly'); } catch(err) { await initDB(); }
                     
-                    const dompetData = await new Promise(r => { const req = idb.transaction('dompet', 'readonly').objectStore('dompet').getAll(); req.onsuccess = () => r(req.result || []); });
+                    const dompetData = await new Promise(r => { 
+                        const req = idb.transaction('dompet', 'readonly').objectStore('dompet').getAll(); 
+                        req.onsuccess = () => r(req.result || []); 
+                        req.onerror = () => r([]); 
+                    });
                     const dbTrx = await new Promise(r => {
                         let res = [];
                         const req = idb.transaction('trx', 'readonly').objectStore('trx').openCursor();
@@ -8100,6 +8110,7 @@ if (tipe === 'KEG') {
                             let cursor = e.target.result;
                             if(cursor) { let t = cursor.value; delete t.bukti_b64; res.push(t); cursor.continue(); } else r(res);
                         };
+                        req.onerror = () => r(res);
                     });
                     
                     const fullData = { trx: dbTrx, anggota: state.anggota, event: state.event, dompet: dompetData };
@@ -8568,7 +8579,7 @@ if (tipe === 'KEG') {
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: #D97706; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>
-                                            <div><b>[PILIH] Keranjang Alokasi:</b> Saat mencatat Mutasi Keluar, pastikan memilih sumber dana virtual (Misal: Dipotong dari Dana Sosial / Dana Kegiatan).</div>
+                                            <div><b>[PILIH] Alokasi:</b> Saat mencatat Mutasi Keluar, pastikan memilih sumber dana virtual (Misal: Dipotong dari Dana Sosial / Dana Kegiatan).</div>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: #92400E; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -9306,7 +9317,7 @@ if (tipe === 'KEG') {
                     </div>
 
                     <div class="form-group" id="wrap-pj-alokasi" style="margin-bottom: 16px;">
-                        <label style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase;">Ambil Dari Keranjang Alokasi <span style="color:var(--danger)">*</span></label>
+                        <label style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase;">Ambil Dari Alokasi <span style="color:var(--danger)">*</span></label>
                         <input type="hidden" id="pj-alokasi-val" value="KEG">
                         <div id="pj-alokasi-btn" class="custom-select" style="border-color: var(--primary); color: var(--primary);" onclick="if(typeof openAlokasiSelect === 'function') openAlokasiSelect('pj')"><div style="display:flex; align-items:center; gap:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Dana Kegiatan</div></div>
                     </div>
@@ -9370,27 +9381,6 @@ if (tipe === 'KEG') {
                     <button class="seg-btn" id="btn-tipe-keluar" onclick="setTrxTipe('keluar')">Dana Keluar</button>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Kaitkan ke Program Acara (Opsional)</label>
-                    <input type="hidden" id="trx-event-val" value="">
-                    <div id="trx-event-btn" class="custom-select" onclick="openTrxEventSelect()">-- Tanpa Program --</div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label id="lbl-trx-dompet" style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Dompet Tujuan (Masuk) <span style="color:var(--danger)">*</span></label>
-                    <input type="hidden" id="trx-dompet-val" value="DP-UTAMA">
-                    <div id="trx-dompet-btn" class="custom-select" onclick="openTrxDompetSelect()">Kas Utama</div>
-                </div>
-
-                <!-- ALOKASI SUMBER DANA INJECTION -->
-                <div class="form-group" id="wrap-trx-alokasi" style="display: none; margin-bottom: 20px;">
-                    <label style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase;">Ambil dari Keranjang Alokasi <span style="color:var(--danger)">*</span></label>
-                    <input type="hidden" id="trx-alokasi-val" value="BEBAS">
-                    <div id="trx-alokasi-btn" class="custom-select" style="border-color: var(--primary); color: var(--primary);" onclick="if(typeof openAlokasiSelect === 'function') openAlokasiSelect('trx')"><div style="display:flex; align-items:center; gap:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Dana Bebas (Kas Utama)</div></div>
-                </div>
-
-                <div style="width: 100%; height: 1.5px; background: dashed 1.5px var(--border); margin-bottom: 20px;"></div>
-
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Nominal <span style="color:var(--danger)">*</span></label>
                     <input type="tel" id="trx-nom" placeholder="Rp 0" oninput="formatRupiah(this)" style="font-size: 24px; font-weight: 900; color: var(--text-main); height: 54px;">
@@ -9405,6 +9395,29 @@ if (tipe === 'KEG') {
                     <label style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Kategori Mutasi <span style="color:var(--danger)">*</span></label>
                     <input type="hidden" id="trx-kat-val">
                     <div id="trx-kats" style="display: flex; flex-wrap: wrap;"></div>
+                </div>
+
+                <div style="width: 100%; height: 1.5px; background: dashed 1.5px var(--border); margin-bottom: 20px;"></div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label id="lbl-trx-dompet" style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Dompet Tujuan (Masuk) <span style="color:var(--danger)">*</span></label>
+                    <input type="hidden" id="trx-dompet-val" value="DP-UTAMA">
+                    <div id="trx-dompet-btn" class="custom-select" onclick="openTrxDompetSelect()">Kas Utama</div>
+                </div>
+
+                <!-- ALOKASI SUMBER DANA INJECTION -->
+                <div class="form-group" id="wrap-trx-alokasi" style="display: none; margin-bottom: 20px;">
+                    <label style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase;">Ambil dari Alokasi <span style="color:var(--danger)">*</span></label>
+                    <input type="hidden" id="trx-alokasi-val" value="BEBAS">
+                    <div id="trx-alokasi-btn" class="custom-select" style="border-color: var(--primary); color: var(--primary);" onclick="if(typeof openAlokasiSelect === 'function') openAlokasiSelect('trx')"><div style="display:flex; align-items:center; gap:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Dana Bebas</div></div>
+                </div>
+
+                <div style="width: 100%; height: 1.5px; background: dashed 1.5px var(--border); margin-bottom: 20px;"></div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Kaitkan ke Program Acara (Opsional)</label>
+                    <input type="hidden" id="trx-event-val" value="">
+                    <div id="trx-event-btn" class="custom-select" onclick="openTrxEventSelect()">-- Tanpa Program --</div>
                 </div>
 
                 <div id="wrap-uang-muka" style="display: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; padding: 16px; border-radius: 14px; margin-bottom: 24px;">
@@ -9677,7 +9690,19 @@ if (tipe === 'KEG') {
                 document.getElementById('wrap-uang-muka').style.display = tipe === 'keluar' ? 'block' : 'none';
                 
                 let currDompet = document.getElementById('trx-dompet-val') ? document.getElementById('trx-dompet-val').value : 'DP-UTAMA';
-                document.getElementById('wrap-trx-alokasi').style.display = (tipe === 'keluar' && (!currDompet || currDompet === 'DP-UTAMA')) ? 'block' : 'none';
+                let isUtama = !currDompet || currDompet === 'DP-UTAMA';
+                document.getElementById('wrap-trx-alokasi').style.display = isUtama ? 'block' : 'none';
+                
+                let lblAlokasi = document.querySelector('#wrap-trx-alokasi label');
+                if (lblAlokasi) {
+                    if (tipe === 'masuk') {
+                        lblAlokasi.innerHTML = 'Masuk Ke Alokasi <span style="color:var(--danger)">*</span>';
+                        lblAlokasi.style.color = 'var(--success)';
+                    } else {
+                        lblAlokasi.innerHTML = 'Ambil Dari Alokasi <span style="color:var(--danger)">*</span>';
+                        lblAlokasi.style.color = 'var(--primary)';
+                    }
+                }
                 
                 document.getElementById('trx-keluar-tipe-val').value = 'lunas';
                 if(document.getElementById('trx-keluar-tipe-btn')) document.getElementById('trx-keluar-tipe-btn').innerText = 'Selesai (Lunas)';
@@ -9737,7 +9762,7 @@ if (tipe === 'KEG') {
                     document.getElementById('trx-dompet-btn').innerText = sel ? sel.label : 'Kas Utama';
                     
                     let isUtama = !val || val === 'DP-UTAMA';
-                    document.getElementById('wrap-trx-alokasi').style.display = (activeTrxTipe === 'keluar' && isUtama) ? 'block' : 'none';
+                    document.getElementById('wrap-trx-alokasi').style.display = isUtama ? 'block' : 'none';
                 });
             }
 
@@ -9757,6 +9782,7 @@ if (tipe === 'KEG') {
                             document.getElementById('trx-dompet-btn').innerText = dMatch ? dMatch.nama : 'Kas Utama';
                             showToast(`Dompet dialihkan otomatis ke: ${dMatch ? dMatch.nama : 'Kas Utama'}`);
                         }
+
                     } else {
                         // PROTEKSI MUTLAK: Jika user membatalkan pilihan acara (-- Tanpa Program --), kembalikan dompet ke Kas Utama
                         document.getElementById('trx-dompet-val').value = 'DP-UTAMA';
@@ -9765,7 +9791,7 @@ if (tipe === 'KEG') {
 
                     let currDompet = document.getElementById('trx-dompet-val').value || 'DP-UTAMA';
                     let isUtama = currDompet === 'DP-UTAMA';
-                    document.getElementById('wrap-trx-alokasi').style.display = (activeTrxTipe === 'keluar' && isUtama) ? 'block' : 'none';
+                    document.getElementById('wrap-trx-alokasi').style.display = isUtama ? 'block' : 'none';
                 });
             }
 
@@ -9838,7 +9864,8 @@ if (tipe === 'KEG') {
                     }
 
                     let alokVal = document.getElementById('trx-alokasi-val') ? document.getElementById('trx-alokasi-val').value : 'BEBAS';
-                    if (activeTrxTipe === 'keluar' && alokVal !== 'BEBAS' && idDompet === 'DP-UTAMA') ket += ` [ALOK:${alokVal}]`;
+                    // SURGICAL FIX: Hapus syarat activeTrxTipe === 'keluar' agar Uang Masuk bisa terinjeksi ke dana Sosial/Kegiatan
+                    if (alokVal !== 'BEBAS' && idDompet === 'DP-UTAMA') ket += ` [ALOK:${alokVal}]`;
 
                     let finalStatus = isPending ? 'pending' : (isTalangan ? 'talangan' : 'lunas');
                     let trx = {
@@ -9964,7 +9991,6 @@ if (tipe === 'KEG') {
                             tx.oncomplete = resolve;
                             tx.onerror = () => reject(tx.error);
                         });
-    
 
                         localStorage.setItem('nav_unsynced', 'true');
                         let safeIdxTalangan = state.trx.findIndex(x => x.id === id);
@@ -11016,11 +11042,14 @@ if (tipe === 'KEG') {
                     let pstUpdate = { ...pst, nom_final: newNomFinal };
                     
                     // 2. Buat Transaksi Fisik (Uang Masuk ke Kas)
-                    // Injeksi Kategori Siluman: Hardcode ke 'Pembayaran Program' agar lolos dari Radar Publik/FOMO
+                    // [SURGICAL FIX]: Injeksi Kategori Siluman & Pelindung Alokasi Dana Sosial (Anti-Bleed/Leak)
+                    let baseKet = `Terima Pembayaran: ${namaPeserta} [ID:${pst.id}]`;
+                    if (evData && evData.sifat === 'sosial') baseKet += ' [ALOK:SOS]';
+
                     let tIn = {
                         id: genID('TX'), ts: Date.now(), tipe: 'masuk',
                         nom_awal: bayar, nom_final: bayar, 
-                        ket: `Terima Pembayaran: ${namaPeserta} [ID:${pst.id}]`, kat: 'Pembayaran Program', status: 'lunas',
+                        ket: baseKet, kat: 'Pembayaran Program', status: 'lunas',
                         id_event: pst.id_event, id_anggota: pst.id_anggota, id_dompet: targetDompet, is_deleted: false, year: new Date().getFullYear()
                     };
                     
@@ -11753,10 +11782,12 @@ if (tipe === 'KEG') {
                 if (!appLogo) { appLogo = 'icon-512.png'; }
 
                 // 1. IDENTIFIKASI PROGRAM MANDIRI (TITIPAN)
+                // [SURGICAL FIX]: Program Mandiri didefinisikan secara absolut berdasarkan penggunaan Dompet Custom.
+                // Mencegah Acara Publik/Hybrid (yang menggunakan Kas Utama) menghilang dari Arus Kas Organisasi.
                 let mandiriEventIds = [];
-                state.trx.forEach(t => {
-                    if (!t.is_deleted && t.id_event && (t.kat === 'Pembayaran Program' || t.tipe === 'peserta')) {
-                        if (!mandiriEventIds.includes(t.id_event)) mandiriEventIds.push(t.id_event);
+                state.event.forEach(e => {
+                    if (e.id_dompet_default && e.id_dompet_default !== 'DP-UTAMA') {
+                        if (!mandiriEventIds.includes(e.id)) mandiriEventIds.push(e.id);
                     }
                 });
 
@@ -13165,4 +13196,3 @@ if (tipe === 'KEG') {
         </script>
 </body>
 </html>    
-  
