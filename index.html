@@ -8761,7 +8761,7 @@ if (tipe === 'KEG') {
                                             <div><b>[KLIK] Baris Nama (Heatmap):</b> Sentuh nama anggota untuk membongkar kalender. Klik langsung pada kotak bulan yang kosong/merah untuk menerima uang Iuran secara instan.</div>
                                         </div>                                                                               
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="padding-top: 0;"><div class="tut-anim-rank" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
+                                            <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 44px; height: 44px; flex-shrink: 0; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));"></div></div>
                                             <div><b>[KLIK] Hologram KTA 3D:</b> Sentuh perisai pangkat di kiri nama anggota untuk membuka KTA E-Sports (*Warrior - Mythic*) digital mereka.</div>
                                         </div>
                                     </div>
@@ -8896,6 +8896,10 @@ if (tipe === 'KEG') {
                                             <div style="color: #F59E0B; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" opacity="0.5"/></svg></div>
                                             <div><b>[KLIK] Dewan Kehormatan:</b> Sentuh panel untuk melihat daftar Pelindung, Penanggung Jawab, Penasehat, dan Pembina resmi organisasi <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span>. </div>
                                         </div>
+                                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                            <div style="color: #94A3B8; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                                            <div><b>[KLIK] Executive Desk & Direktori:</b> Sentuh kartu identitas Pengurus atau klik tombol Direktori. Opsi menyalin Nomor Rekening dan tombol Chat WA akan langsung muncul.</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -9024,7 +9028,7 @@ if (tipe === 'KEG') {
                                             <div><b>[KLIK] Baris Nama:</b> Sentuh nama untuk membongkar matriks kalender disiplin 12 bulan.</div>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="padding-top: 0;"><div class="tut-anim-rank" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
+                                            <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 44px; height: 44px; flex-shrink: 0; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));"></div></div>
                                             <div><b>[KLIK] Hologram KTA 3D:</b> Sentuh perisai di kiri nama Anda. KTA Digital akan berputar (<i>Flip</i>) menampilkan Progress Bar XP <i>Warrior - Mythic Glory</i>.</div>
                                         </div>
                                     </div>
@@ -9237,7 +9241,7 @@ if (tipe === 'KEG') {
                                             <div><b>[KLIK] Baris Nama Pemuda:</b> Membongkar kalender 12 bulan. Warga bisa mengawasi kedisiplinan anggota <span class="font-nasa" style="font-size: 1.25em;">NAVASENA</span> dengan melihat warna (Hijau, Kuning & Merah).</div>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="padding-top: 0;"><div class="tut-anim-rank" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div></div>
+                                            <div style="padding-top: 2px;"><div class="tut-anim-rank" style="width: 44px; height: 44px; flex-shrink: 0; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));"></div></div>
                                             <div><b>[KLIK] Lencana Perisai Pangkat:</b> Sentuh perisai di kiri nama pemuda untuk melihat seberapa besar level apresiasi sistem terhadap kontribusi finansial mereka.</div>
                                         </div>
                                     </div>
@@ -9342,13 +9346,21 @@ if (tipe === 'KEG') {
                     75%, 87.5% { background-image: var(--rank-mythic); }
                     87.5%, 100% { background-image: var(--rank-glory); }
                 }
+                @keyframes tutRankPulseHolo {
+                    0%, 12.5%, 25%, 37.5%, 50%, 62.5%, 75%, 87.5%, 100% { transform: scale(0.5) translateY(5px); opacity: 0; filter: blur(4px); }
+                    2%, 14.5%, 27%, 39.5%, 52%, 64.5%, 77%, 89.5% { transform: scale(1.15) translateY(-2px); opacity: 1; filter: blur(0px); }
+                    4%, 16.5%, 29%, 41.5%, 54%, 66.5%, 79%, 91.5% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+                    11%, 23.5%, 36%, 48.5%, 61%, 73.5%, 86%, 98.5% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0px); }
+                }
                 .tut-anim-rank {
                     background-size: contain;
                     background-position: center;
                     background-repeat: no-repeat;
-                    animation: tutRankCycle 16s infinite step-end;
+                    animation: tutRankCycle 16s infinite step-end, tutRankPulseHolo 16s infinite ease-in-out;
+                    will-change: transform, opacity, filter, background-image;
                 }
             </style>
+
         </div>
 
             <!-- MODAL KLASEMEN DONASI -->
