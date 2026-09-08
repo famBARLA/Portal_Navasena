@@ -1896,18 +1896,20 @@
                     dewanEl.style.display = 'none';
                     dewanEl.innerHTML = '';
                 } else {
+
                     let dPelindung = String(getSetting('dewan_pelindung', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
                     let dPj = String(getSetting('dewan_pj', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
                     let dPenasehat = String(getSetting('dewan_penasehat', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
-                    let dPembinaan = String(getSetting('dewan_pembinaan', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
+                    let dPembina = String(getSetting('dewan_pembina', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
                     
                     let dewanMap = [];
                     if (dPelindung.length > 0) dewanMap.push({ jabatan: 'Pelindung', list: dPelindung });
                     if (dPj.length > 0) dewanMap.push({ jabatan: 'Penanggung Jawab', list: dPj });
                     if (dPenasehat.length > 0) dewanMap.push({ jabatan: 'Penasehat', list: dPenasehat });
-                    if (dPembinaan.length > 0) dewanMap.push({ jabatan: 'Pembinaan', list: dPembinaan });
+                    if (dPembina.length > 0) dewanMap.push({ jabatan: 'Pembina', list: dPembina });
                     
                     if (dewanMap.length > 0) {
+
                         let cardsHtml = '';
                         dewanMap.forEach(group => {
                             // Nama dirender 1 baris, tidak turun, menggunakan white-space: nowrap
@@ -5483,9 +5485,10 @@ if (tipe === 'KEG') {
                                         <textarea id="set-dewan-penasehat" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
                                     </div>
                                     <div>
-                                        <div style="font-size: 10px; font-weight: 900; color: #B45309; margin-bottom: 6px; text-transform: uppercase;">Pembinaan</div>
-                                        <textarea id="set-dewan-pembinaan" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
+                                        <div style="font-size: 10px; font-weight: 900; color: #B45309; margin-bottom: 6px; text-transform: uppercase;">Pembina</div>
+                                        <textarea id="set-dewan-pembina" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -6081,7 +6084,7 @@ if (tipe === 'KEG') {
                     let dPelindung = getSetting('dewan_pelindung', '');
                     let dPj = getSetting('dewan_pj', '');
                     let dPenasehat = getSetting('dewan_penasehat', '');
-                    let dPembinaan = getSetting('dewan_pembinaan', '');
+                    let dPembina = getSetting('dewan_pembina', '');
                     
                     document.getElementById('set-kat-masuk').value = kMasuk.includes(',') && !kMasuk.includes('\n') ? kMasuk.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : kMasuk;
                     document.getElementById('set-kat-keluar').value = kKeluar.includes(',') && !kKeluar.includes('\n') ? kKeluar.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : kKeluar;
@@ -6090,7 +6093,7 @@ if (tipe === 'KEG') {
                     document.getElementById('set-dewan-pelindung').value = dPelindung.includes(',') && !dPelindung.includes('\n') ? dPelindung.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPelindung;
                     document.getElementById('set-dewan-pj').value = dPj.includes(',') && !dPj.includes('\n') ? dPj.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPj;
                     document.getElementById('set-dewan-penasehat').value = dPenasehat.includes(',') && !dPenasehat.includes('\n') ? dPenasehat.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPenasehat;
-                    document.getElementById('set-dewan-pembinaan').value = dPembinaan.includes(',') && !dPembinaan.includes('\n') ? dPembinaan.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPembinaan;
+                    document.getElementById('set-dewan-pembina').value = dPembina.includes(',') && !dPembina.includes('\n') ? dPembina.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPembina;
                     
                     if(document.getElementById('set-pin-baru')) document.getElementById('set-pin-baru').value = '';
 
@@ -7259,7 +7262,7 @@ if (tipe === 'KEG') {
                 setSetting('dewan_pelindung', document.getElementById('set-dewan-pelindung').value);
                 setSetting('dewan_pj', document.getElementById('set-dewan-pj').value);
                 setSetting('dewan_penasehat', document.getElementById('set-dewan-penasehat').value);
-                setSetting('dewan_pembinaan', document.getElementById('set-dewan-pembinaan').value);
+                setSetting('dewan_pembina', document.getElementById('set-dewan-pembina').value);
                 
                 let pBaru = document.getElementById('set-pin-baru');
                 if (pBaru && pBaru.value.trim() !== '') {
@@ -11737,7 +11740,7 @@ if (tipe === 'KEG') {
                         aspirasi: localAspirasi // Mencegah Null Reference (sebelumnya state.aspirasi yang Undefined)
                     };
 
-                     if (isAuthMaster) {
+                    if (isAuthMaster) {
                         await loadData(); // SURGICAL FIX: Sinkronisasi mutlak RAM dengan IDB sebelum Payload dirakit untuk cegah Data Overwrite
                         payload.trs = state.trx;
                         payload.anggota = state.anggota;
@@ -11753,7 +11756,7 @@ if (tipe === 'KEG') {
                             dewan_pelindung: getSetting('dewan_pelindung', ''),
                             dewan_pj: getSetting('dewan_pj', ''),
                             dewan_penasehat: getSetting('dewan_penasehat', ''),
-                            dewan_pembinaan: getSetting('dewan_pembinaan', ''),
+                            dewan_pembina: getSetting('dewan_pembina', ''),
                             hist_event_count: getSetting('hist_event_count', 0),
                             alloc_keg: getSetting('alloc_keg', 40),
                             alloc_sos: getSetting('alloc_sos', 30),
