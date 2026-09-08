@@ -11737,7 +11737,7 @@ if (tipe === 'KEG') {
                         aspirasi: localAspirasi // Mencegah Null Reference (sebelumnya state.aspirasi yang Undefined)
                     };
 
-                    if (isAuthMaster) {
+                     if (isAuthMaster) {
                         await loadData(); // SURGICAL FIX: Sinkronisasi mutlak RAM dengan IDB sebelum Payload dirakit untuk cegah Data Overwrite
                         payload.trs = state.trx;
                         payload.anggota = state.anggota;
@@ -11750,6 +11750,10 @@ if (tipe === 'KEG') {
                             kat_keluar: getSetting('kat_keluar', 'Operasional\nKonsumsi\nHUT RI'),
                             kiosk_pin: getSetting('kiosk_pin', btoa('170823')),
                             jabatan_list: getSetting('jabatan_list', 'Ketum NAVASENA\nSekretaris Jenderal\nBendahara Umum\nKoordinator Humas\nAdmin Medsos'),
+                            dewan_pelindung: getSetting('dewan_pelindung', ''),
+                            dewan_pj: getSetting('dewan_pj', ''),
+                            dewan_penasehat: getSetting('dewan_penasehat', ''),
+                            dewan_pembinaan: getSetting('dewan_pembinaan', ''),
                             hist_event_count: getSetting('hist_event_count', 0),
                             alloc_keg: getSetting('alloc_keg', 40),
                             alloc_sos: getSetting('alloc_sos', 30),
