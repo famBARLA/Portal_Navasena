@@ -1622,8 +1622,15 @@
                     if (typeof openCustomPrompt === 'function') {
                         openCustomPrompt("Buat Label Manual", "Masukkan nama jabatan khusus yang tidak ada di daftar Master.", "Misal: Seksi Konsumsi", (manualLabel) => {
                             let finalLabel = manualLabel.replace(/\s+/g, ' ').trim();
-                            document.getElementById('ang-label-val').value = finalLabel;
-                            document.getElementById('ang-label-btn').innerText = finalLabel;
+                            
+                            // [SURGICAL FIX]: ZERO-WIDTH SPACE INJECTION (ANTI-HIJACKING SHIELD)
+                            // Menyisipkan karakter Unicode tak kasat mata (\u200B) di akhir string.
+                            // Ini membuat sistem mutlak mengklasifikasikannya sebagai "Label Custom/Bypass"
+                            // meskipun teks yang diketik 100% sama dengan daftar Hierarki Resmi.
+                            let bypassLabel = finalLabel + '\u200B';
+                            
+                            document.getElementById('ang-label-val').value = bypassLabel;
+                            document.getElementById('ang-label-btn').innerText = finalLabel; // Tampilan UI tombol tetap bersih
                         });
                     }
                 } else {
@@ -1881,6 +1888,67 @@
                 }
             }
 
+            // 2.5 DEWAN KEHORMATAN & PEMBINA (THE GOLDEN PILLARS)
+            let dewanEl = document.getElementById('warga-dewan-ui');
+            if (dewanEl) {
+                let role = localStorage.getItem('nav_role');
+                if (isKiosk && role !== 'warga' && role !== 'anggota') {
+                    dewanEl.style.display = 'none';
+                    dewanEl.innerHTML = '';
+                } else {
+                    let dPelindung = String(getSetting('dewan_pelindung', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
+                    let dPj = String(getSetting('dewan_pj', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
+                    let dPenasehat = String(getSetting('dewan_penasehat', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
+                    let dPembinaan = String(getSetting('dewan_pembinaan', '')).split(/\n/).map(s => s.trim()).filter(s => s !== '');
+                    
+                    let dewanMap = [];
+                    if (dPelindung.length > 0) dewanMap.push({ jabatan: 'Pelindung', list: dPelindung });
+                    if (dPj.length > 0) dewanMap.push({ jabatan: 'Penanggung Jawab', list: dPj });
+                    if (dPenasehat.length > 0) dewanMap.push({ jabatan: 'Penasehat', list: dPenasehat });
+                    if (dPembinaan.length > 0) dewanMap.push({ jabatan: 'Pembinaan', list: dPembinaan });
+                    
+                    if (dewanMap.length > 0) {
+                        let cardsHtml = '';
+                        dewanMap.forEach(group => {
+                            // Nama dirender 1 baris, tidak turun, menggunakan white-space: nowrap
+                            let namaHtml = group.list.map(n => `<div style="font-size: 14px; font-weight: 900; color: #FFFFFF; display: flex; align-items: center; gap: 8px;"><div style="width: 4px; height: 4px; background: #FBBF24; border-radius: 50%; flex-shrink: 0;"></div><div style="flex:1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(n)}</div></div>`).join('');
+                            
+                            cardsHtml += `
+                            <div class="no-select" style="background: rgba(255, 255, 255, 0.03); border-left: 3px solid rgba(245, 158, 11, 0.6); border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="font-size: 9.5px; font-weight: 900; color: #FDE68A; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">${esc(group.jabatan)}</div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">${namaHtml}</div>
+                            </div>`;
+                        });
+                        
+                        dewanEl.innerHTML = `
+                        <div style="background: linear-gradient(135deg, #0F172A 0%, #172554 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); position: relative; overflow: hidden; transition: all 0.3s ease;">
+                            <div style="position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: rgba(245, 158, 11, 0.15); filter: blur(40px); border-radius: 50%; pointer-events: none;"></div>
+                            <div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: rgba(56, 189, 248, 0.1); filter: blur(30px); border-radius: 50%; pointer-events: none;"></div>
+                            
+                            <!-- TRIGGER / HEADER DROPDOWN -->
+                            <div class="no-select" style="padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; position: relative; z-index: 2; transition: background 0.2s;" onmousedown="this.style.background='rgba(255,255,255,0.05)'" onmouseup="this.style.background='transparent'" onclick="let b=document.getElementById('dewan-body'); let c=document.getElementById('dewan-chev'); if(b.style.display==='none'){b.style.display='block'; c.style.transform='rotate(180deg)';}else{b.style.display='none'; c.style.transform='rotate(0deg)';}">
+                                <div style="font-size: 12px; font-weight: 900; color: #FBBF24; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" opacity="0.5"/></svg>
+                                    <span>DEWAN KEHORMATAN <span class="font-nasa" style="font-size: 1.25em; letter-spacing: 0.5px;">NAVASENA</span></span>
+                                </div>
+                                <div style="color: #FBBF24;">
+                                    <svg id="dewan-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"><polyline points="6 9 12 15 18 9"/></svg>
+                                </div>
+                            </div>                            
+                            <!-- DROPDOWN BODY -->
+                            <div id="dewan-body" style="display: none; padding: 0 20px 20px 20px; position: relative; z-index: 2; border-top: 1px dashed rgba(245, 158, 11, 0.2); margin-top: -4px; padding-top: 16px;">
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    ${cardsHtml}
+                                </div>
+                            </div>
+                        </div>`;
+                        dewanEl.style.display = 'block';
+                    } else {
+                        dewanEl.style.display = 'none';
+                    }
+                }
+            }
+
             // 3. EXECUTIVE DESK (MASTER-DRIVEN RENDER & COMPACT CAROUSEL)
             let deskEl = document.getElementById('warga-desk-ui');
             if (deskEl) {
@@ -1891,7 +1959,7 @@
                     deskEl.innerHTML = '';
                 } else {
                     // Absolute String Caster untuk mencegah Type Error Crash
-                    let jStr = String(getSetting('jabatan_list', 'Ketum NAVASENA\nSekretaris Jenderal\nBendahara Umum\nKoordinator Humas\nAdmin Medsos'));
+                    let jStr = String(getSetting('jabatan_list', 'Ketum NAVASENA\nBendahara Umum\nSekretaris'));
                     let masterArr = jStr.split(/\n|,/).map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s !== '');
                     
                     window.masterDeskGroups = []; 
@@ -2543,11 +2611,17 @@
                     } else if (t.tipe === 'masuk' && t.id_anggota && t.kat !== 'Transfer Internal' && t.kat !== 'Saldo Awal' && t.kat !== 'Sisa Uang Muka' && t.kat !== 'Pembayaran Program' && !String(t.kat||'').toLowerCase().includes('sponsor') && !(t.kat||'').includes('Koreksi Saldo')) {
                         let keyD = `${t.id_anggota}-${tYear}-${tMonth}`;
                         donasiMap[keyD] = (donasiMap[keyD] || 0) + t.nom_final;
+
                     } else if (t.tipe === 'peserta' && t.nom_final < t.nom_awal) {
                         // SURGICAL FIX: Pendeteksi Utang Sosial (Mencegah God-Mode Bypass)
                         let evCek = state.event.find(e => e.id === t.id_event);
                         if (evCek && evCek.sifat === 'sosial') {
-                            sosialArrearsMap[t.id_anggota] = (sosialArrearsMap[t.id_anggota] || 0) + 1;
+                            // [PROTOKOL MASA TENGGANG 24 JAM]: The Time-Awareness Sensor
+                            // Hukuman XP (The Justice Hammer) hanya dijatuhkan jika usia tagihan >= 86.400.000 milidetik (24 Jam)
+                            // Jika anggota dalam masa tenggang, tagihan tetap ada, namun XP dan KTA dilindungi (Bypass)
+                            if ((tNow.getTime() - t.ts) >= 86400000) {
+                                sosialArrearsMap[t.id_anggota] = (sosialArrearsMap[t.id_anggota] || 0) + 1;
+                            }
                         }
                     }
                 }
@@ -4544,8 +4618,8 @@
             <!-- THE PUBLIC TRUST CENTER (INJEKSI 3 IDE BRILIAN) -->
             <div id="warga-mading-ui" class="guest-only" style="display:none; margin-bottom: 24px;"></div>
             <div id="warga-honorary-ui" class="guest-only" style="display:none; margin-bottom: 24px;"></div>
+            <div id="warga-dewan-ui" class="no-select" style="display:none; margin-bottom: 24px;"></div>
             <div id="warga-desk-ui" class="no-select" style="display:none; margin-bottom: 24px;"></div>
-
             
             <!-- BUTTONS GLOBAL (PANDUAN & AKSES) -->
             <div style="position: relative; z-index: 10; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; width: 100%;">
@@ -5190,13 +5264,15 @@ if (tipe === 'KEG') {
             <div class="modal-box">
                 <button class="close-modal" onclick="closeModal('mod-event-add')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 800;">Buat Program Baru</h3>
-                <div class="form-group"><label>Nama Program/Sosial</label><input type="text" id="evt-nama" placeholder="Keterangan Program/Sosial"></div>
-                <div class="form-group"><label>Target Anggaran (Opsional)</label><input type="tel" id="evt-target" placeholder="0" oninput="formatRupiah(this)" style="font-size: 20px; font-weight: 800;"></div>
-                <div class="form-group" style="margin-top: 16px;">
+                
+                <div class="form-group" style="margin-bottom: 16px;">
                     <label style="color: var(--primary);">Sifat Pendanaan Program <span style="color:var(--danger)">*</span></label>
                     <input type="hidden" id="evt-sifat-val" value="publik">
                     <div id="evt-sifat-btn" class="custom-select" style="border-radius: 12px; border-color: var(--primary);" onclick="openEvtSifatSelect()">ACARA PUBLIK</div>
                 </div>
+
+                <div class="form-group"><label>Nama Program/Sosial</label><input type="text" id="evt-nama" placeholder="Keterangan Program/Sosial"></div>
+                <div class="form-group"><label>Target Anggaran (Opsional)</label><input type="tel" id="evt-target" placeholder="0" oninput="formatRupiah(this)" style="font-size: 20px; font-weight: 800;"></div>
                 
                 <!-- WRAPPER REGULER (PUBLIK/INTERNAL/HYBRID) -->
                 <div id="wrap-evt-reguler" style="display: block;">
@@ -5381,7 +5457,36 @@ if (tipe === 'KEG') {
                                     </label>
                                     <span style="font-size: 9px; font-weight: 700; color: #94A3B8; background: #F1F5F9; padding: 2px 6px; border-radius: 4px;">Pemisah: Enter (Baris Baru)</span>
                                 </div>
-                                <textarea id="set-jabatan-list" rows="5" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: var(--primary-light); border: 1.5px solid rgba(59, 130, 246, 0.3); color: var(--primary); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); resize: none;">Ketum NAVASENA&#10;Sekretaris Jenderal&#10;Bendahara Umum&#10;Koordinator Humas&#10;Admin Medsos</textarea>
+                                <textarea id="set-jabatan-list" rows="5" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: var(--primary-light); border: 1.5px solid rgba(59, 130, 246, 0.3); color: var(--primary); border-radius: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); resize: none;">Ketum NAVASENA&#10;Sekretaris&#10;Bendahara</textarea>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 4px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
+                                    <label style="margin-bottom: 0; font-size: 12px; color: #D97706; display: flex; align-items: center; gap: 6px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                        Dewan Kehormatan
+                                    </label>
+                                    <span style="font-size: 9px; font-weight: 700; color: #94A3B8; background: #F1F5F9; padding: 2px 6px; border-radius: 4px;">Pemisah: Enter (Baris Baru)</span>
+                                </div>
+                                
+                                <div style="background: #FFFBEB; border: 1.5px solid rgba(245, 158, 11, 0.3); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                                    <div>
+                                        <div style="font-size: 10px; font-weight: 900; color: #B45309; margin-bottom: 6px; text-transform: uppercase;">Pelindung</div>
+                                        <textarea id="set-dewan-pelindung" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; font-weight: 900; color: #B45309; margin-bottom: 6px; text-transform: uppercase;">Penanggung Jawab</div>
+                                        <textarea id="set-dewan-pj" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; font-weight: 900; color: #B45309; margin-bottom: 6px; text-transform: uppercase;">Penasehat</div>
+                                        <textarea id="set-dewan-penasehat" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; font-weight: 900; color: #B45309; margin-bottom: 6px; text-transform: uppercase;">Pembinaan</div>
+                                        <textarea id="set-dewan-pembinaan" rows="2" style="line-height: 1.6; font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.7); border: 1px solid rgba(245, 158, 11, 0.4); color: #92400E; border-radius: 8px; resize: none; width: 100%; padding: 10px;"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -5954,7 +6059,7 @@ if (tipe === 'KEG') {
                     
                     // PROTEKSI MUTLAK: Reset Dompet ke Kas Utama untuk mencegah kebocoran state dari sesi sebelumnya
                     if(document.getElementById('trx-dompet-val')) document.getElementById('trx-dompet-val').value = 'DP-UTAMA';
-                    if(document.getElementById('trx-dompet-btn')) document.getElementById('trx-dompet-btn').innerText = 'Kas Utama';
+                    if(document.getElementById('trx-dompet-btn')) document.getElementById('trx-dompet-btn').innerHTML = '<span>KAS <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span></span>';
                     
                     setTrxTipe('masuk'); // Eksekutor murni pembuat Chip Kategori
 
@@ -5973,9 +6078,19 @@ if (tipe === 'KEG') {
                     let kKeluar = getSetting('kat_keluar', 'Operasional\nKonsumsi\nHUT RI');
                     let jList = getSetting('jabatan_list', 'Ketum NAVASENA\nSekretaris Jenderal\nBendahara Umum\nKoordinator Humas\nAdmin Medsos');
                     
+                    let dPelindung = getSetting('dewan_pelindung', '');
+                    let dPj = getSetting('dewan_pj', '');
+                    let dPenasehat = getSetting('dewan_penasehat', '');
+                    let dPembinaan = getSetting('dewan_pembinaan', '');
+                    
                     document.getElementById('set-kat-masuk').value = kMasuk.includes(',') && !kMasuk.includes('\n') ? kMasuk.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : kMasuk;
                     document.getElementById('set-kat-keluar').value = kKeluar.includes(',') && !kKeluar.includes('\n') ? kKeluar.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : kKeluar;
                     document.getElementById('set-jabatan-list').value = jList.includes(',') && !jList.includes('\n') ? jList.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : jList;
+                    
+                    document.getElementById('set-dewan-pelindung').value = dPelindung.includes(',') && !dPelindung.includes('\n') ? dPelindung.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPelindung;
+                    document.getElementById('set-dewan-pj').value = dPj.includes(',') && !dPj.includes('\n') ? dPj.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPj;
+                    document.getElementById('set-dewan-penasehat').value = dPenasehat.includes(',') && !dPenasehat.includes('\n') ? dPenasehat.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPenasehat;
+                    document.getElementById('set-dewan-pembinaan').value = dPembinaan.includes(',') && !dPembinaan.includes('\n') ? dPembinaan.split(',').map(s=>s.trim()).filter(s=>s!=='').join('\n') : dPembinaan;
                     
                     if(document.getElementById('set-pin-baru')) document.getElementById('set-pin-baru').value = '';
 
@@ -6716,31 +6831,23 @@ if (tipe === 'KEG') {
 
                             <div style="display: flex; gap: 8px; position: relative; z-index: 10; flex-wrap: wrap;">
                                 
-                                ${isSosialMode ? `
-                                <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 100%; background: #10B981; color: white; border: none; font-size: 12px; font-weight: 900; padding: 16px; border-radius: 12px; cursor: pointer; box-shadow: 0 6px 15px rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openSosialTap === 'function') window.openSosialTap('${ev.id}')">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ABSENSI & TERIMA IURAN SOSIAL
-                                </button>
-                                <button class="btn no-select" style="flex: 1; min-width: 130px; background: #FFFFFF; color: #059669; border: 1.5px solid #059669; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openKelolaPeserta === 'function') window.openKelolaPeserta('${ev.id}')">
-                                    DATA PESERTA (PIUTANG)
-                                </button>
-                                ` : `
-
-                                ${(rawSifat === 'internal' || rawSifat === 'hybrid' || rawSifat === 'publik') ? `
-                                <button class="btn no-select" style="flex: 1; min-width: 130px; background: #1E3A8A; color: white; border: none; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(30,58,138,0.2);" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openKelolaPeserta === 'function') window.openKelolaPeserta('${ev.id}')">
-                                    DATA PESERTA
+                                ${(isSosialMode || rawSifat === 'internal' || rawSifat === 'hybrid' || rawSifat === 'publik') ? `
+                                <button class="btn no-select" style="flex: 1; min-width: 100%; background: ${isSosialMode ? '#10B981' : '#1E3A8A'}; color: white; border: none; font-size: 12px; font-weight: 900; padding: 16px; border-radius: 12px; cursor: pointer; box-shadow: 0 6px 15px ${isSosialMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(30, 58, 138, 0.3)'}; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openKelolaPeserta === 'function') window.openKelolaPeserta('${ev.id}')">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg> ${isSosialMode ? 'KELOLA ABSENSI & TAGIHAN' : 'DATA PESERTA & TAGIHAN'}
                                 </button>
                                 ` : ''}
 
-                                ${(rawSifat !== 'internal') ? `
+                                ${(rawSifat !== 'internal' && !isSosialMode) ? `
                                 <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 130px; background: ${rawSifat === 'hybrid' ? '#059669' : '#1E3A8A'}; color: white; border: none; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openDonasiRapid === 'function') window.openDonasiRapid('${ev.id}', '${rawSifat === 'hybrid' ? 'sponsor' : 'donasi'}')">
                                     ${rawSifat === 'hybrid' ? '+ TERIMA SPONSOR' : '+ DONASI PROGRAM'}
                                 </button>
                                 ` : ''}
 
+                                ${(!isSosialMode) ? `
                                 <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 130px; background: #FFFFFF; color: #1E3A8A; border: 1.5px solid #1E3A8A; font-size: 11px; font-weight: 800; padding: 14px 8px; border-radius: 12px; cursor: pointer;" onclick="event.preventDefault(); event.stopPropagation(); if(typeof window.openPjAdvance === 'function') window.openPjAdvance('${ev.id}')">
                                     CAIRKAN PJ
                                 </button>
-                                `}
+                                ` : ''}
 
                                 <button class="btn kiosk-hide no-select" style="flex: 1; min-width: 130px; background: #F8FAFC; color: #0F172A; border: 1.5px solid #CBD5E1; font-size: 11px; font-weight: 900; padding: 14px 8px; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center;" onclick="event.preventDefault(); event.stopPropagation(); generateEventLPJ('${ev.id}')">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 6px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> CETAK LPJ (PDF)
@@ -7063,8 +7170,8 @@ if (tipe === 'KEG') {
                                 storeTrx.delete(dbTrx.id); // SURGICAL FIX: Eksekusi mati (Purge) Zombie Invoice dari IDB
                             } else if (dbTrx.id_event === id && dbTrx.kat === 'Bantuan Sosial' && String(dbTrx.ket).includes('Santunan Darurat:')) {
                                 storeTrx.delete(dbTrx.id); // SURGICAL FIX: Musnahkan transaksi Induk Dana Sosial
-                            } else if (dbTrx.id_event === id && dbTrx.tipe === 'masuk' && dbTrx.kat === 'Pembayaran Program' && String(dbTrx.ket).includes('Iuran Sosial:')) {
-                                storeTrx.delete(dbTrx.id); // SURGICAL FIX: Musnahkan pembayaran Iuran Sosial yang terikat
+                            } else if (dbTrx.id_event === id && dbTrx.tipe === 'masuk' && dbTrx.kat === 'Pembayaran Program' && targetEvent && targetEvent.sifat === 'sosial') {
+                                storeTrx.delete(dbTrx.id); // SURGICAL FIX: Musnahkan mutlak SEMUA pembayaran Iuran Sosial (Mencegah Phantom Money dari Terima Cicilan)
                             } else {
                                 let newDompet = dompetPjIds.includes(dbTrx.id_dompet) ? 'DP-UTAMA' : dbTrx.id_dompet;
                                 let newEvent = dbTrx.id_event === id ? '' : dbTrx.id_event;
@@ -7088,7 +7195,7 @@ if (tipe === 'KEG') {
                         if (t.id_event !== id) return true;
                         if (t.tipe === 'peserta') return false;
                         if (t.kat === 'Bantuan Sosial' && String(t.ket).includes('Santunan Darurat:')) return false;
-                        if (t.tipe === 'masuk' && t.kat === 'Pembayaran Program' && String(t.ket).includes('Iuran Sosial:')) return false;
+                        if (t.tipe === 'masuk' && t.kat === 'Pembayaran Program' && targetEvent && targetEvent.sifat === 'sosial') return false;
                         return true;
                     });
                     
@@ -7145,9 +7252,14 @@ if (tipe === 'KEG') {
                 setSetting('alloc_sos', sos);
                 setSetting('alloc_opr', opr);
                 setSetting('alloc_dar', dar);
+
                 setSetting('kat_masuk', document.getElementById('set-kat-masuk').value);
                 setSetting('kat_keluar', document.getElementById('set-kat-keluar').value);
                 setSetting('jabatan_list', document.getElementById('set-jabatan-list').value);
+                setSetting('dewan_pelindung', document.getElementById('set-dewan-pelindung').value);
+                setSetting('dewan_pj', document.getElementById('set-dewan-pj').value);
+                setSetting('dewan_penasehat', document.getElementById('set-dewan-penasehat').value);
+                setSetting('dewan_pembinaan', document.getElementById('set-dewan-pembinaan').value);
                 
                 let pBaru = document.getElementById('set-pin-baru');
                 if (pBaru && pBaru.value.trim() !== '') {
@@ -9402,7 +9514,7 @@ if (tipe === 'KEG') {
                 <div class="form-group" style="margin-bottom: 16px;">
                     <label id="lbl-trx-dompet" style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Dompet Tujuan (Masuk) <span style="color:var(--danger)">*</span></label>
                     <input type="hidden" id="trx-dompet-val" value="DP-UTAMA">
-                    <div id="trx-dompet-btn" class="custom-select" onclick="openTrxDompetSelect()">Kas Utama</div>
+                    <div id="trx-dompet-btn" class="custom-select" onclick="openTrxDompetSelect()"><span>KAS <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span></span></div>
                 </div>
 
                 <!-- ALOKASI SUMBER DANA INJECTION -->
@@ -9755,11 +9867,15 @@ if (tipe === 'KEG') {
             }
 
             function openTrxDompetSelect() {
-                let opts = state.dompet.filter(d => d.status === 'aktif' && !d.is_pj).map(d => ({label: d.nama, value: d.id}));
+                let opts = state.dompet.filter(d => d.status === 'aktif' && !d.is_pj).map(d => ({label: d.id === 'DP-UTAMA' ? 'KAS NAVASENA' : d.nama, value: d.id}));
                 openSelectModal('Pilih Dompet Kas', opts, document.getElementById('trx-dompet-val').value, (val) => {
                     document.getElementById('trx-dompet-val').value = val;
                     let sel = opts.find(o => o.value === val);
-                    document.getElementById('trx-dompet-btn').innerText = sel ? sel.label : 'Kas Utama';
+                    if (val === 'DP-UTAMA' || !val) {
+                        document.getElementById('trx-dompet-btn').innerHTML = '<span>KAS <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span></span>';
+                    } else {
+                        document.getElementById('trx-dompet-btn').innerText = sel ? sel.label : 'KAS NAVASENA';
+                    }
                     
                     let isUtama = !val || val === 'DP-UTAMA';
                     document.getElementById('wrap-trx-alokasi').style.display = isUtama ? 'block' : 'none';
@@ -9779,14 +9895,19 @@ if (tipe === 'KEG') {
                         if (evTarget && evTarget.id_dompet_default) {
                             document.getElementById('trx-dompet-val').value = evTarget.id_dompet_default;
                             let dMatch = state.dompet.find(x => x.id === evTarget.id_dompet_default);
-                            document.getElementById('trx-dompet-btn').innerText = dMatch ? dMatch.nama : 'Kas Utama';
-                            showToast(`Dompet dialihkan otomatis ke: ${dMatch ? dMatch.nama : 'Kas Utama'}`);
+                            if (evTarget.id_dompet_default === 'DP-UTAMA') {
+                                document.getElementById('trx-dompet-btn').innerHTML = '<span>KAS <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span></span>';
+                                showToast(`Dompet dialihkan otomatis ke: KAS NAVASENA`);
+                            } else {
+                                document.getElementById('trx-dompet-btn').innerText = dMatch ? dMatch.nama : 'KAS NAVASENA';
+                                showToast(`Dompet dialihkan otomatis ke: ${dMatch ? dMatch.nama : 'KAS NAVASENA'}`);
+                            }
                         }
 
                     } else {
                         // PROTEKSI MUTLAK: Jika user membatalkan pilihan acara (-- Tanpa Program --), kembalikan dompet ke Kas Utama
                         document.getElementById('trx-dompet-val').value = 'DP-UTAMA';
-                        document.getElementById('trx-dompet-btn').innerText = 'Kas Utama';
+                        document.getElementById('trx-dompet-btn').innerHTML = '<span>KAS <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span></span>';
                     }
 
                     let currDompet = document.getElementById('trx-dompet-val').value || 'DP-UTAMA';
@@ -10747,9 +10868,12 @@ if (tipe === 'KEG') {
                     let sisa = t.nom_awal - t.nom_final;
                     let isLunas = sisa <= 0;
                     
-                    let bgStatus = isLunas ? '#D1FAE5' : (t.nom_final > 0 ? '#FEF3C7' : '#FEE2E2');
+                    // Unified Fast-Tap Logic (Smart Row)
+                    let bgCard = isLunas ? '#ECFDF5' : '#FFFFFF';
+                    let borderCard = isLunas ? '#10B981' : '#E2E8F0';
                     let colorStatus = isLunas ? '#059669' : (t.nom_final > 0 ? '#D97706' : '#DC2626');
                     let textStatus = isLunas ? 'LUNAS' : (t.nom_final > 0 ? 'MENCICIL' : 'BELUM BAYAR');
+                    let badgeStatus = `<span style="font-size: 8.5px; font-weight: 900; background: ${isLunas ? '#D1FAE5' : (t.nom_final > 0 ? '#FEF3C7' : '#FEE2E2')}; color: ${colorStatus}; border: 1px solid ${colorStatus}; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">${textStatus}</span>`;
                     
                     // Ekstraksi data Shadow Entity (Anti-Truncation Shield)
                     let infoArr = t.ket.split('|');
@@ -10759,40 +10883,59 @@ if (tipe === 'KEG') {
                     let actionHtml = '';
                     if (!isKiosk) {
                         if (!isLunas) {
-                            actionHtml += `<button class="btn btn-success no-select" style="padding: 8px 12px; font-size: 10px; border-radius: 8px; width: auto;" onclick="openPesertaPay('${t.id}')">Terima Uang</button>`;
+                            actionHtml += `<button class="btn btn-success no-select" style="padding: 10px 12px; font-size: 10.5px; border-radius: 8px; flex: 1;" onclick="openPesertaPay('${t.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:4px;"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg> Terima Cicilan</button>`;
                         }
                         // SURGICAL FIX: Injeksi Tombol Edit (Ikon Pena)
-                        actionHtml += `<button class="btn btn-outline no-select" style="padding: 8px 12px; font-size: 10px; border-radius: 8px; width: auto; color: var(--primary); border-color: var(--border); background: var(--surface);" onclick="editPeserta('${t.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
+                        actionHtml += `<button class="btn btn-outline no-select" style="padding: 10px 12px; font-size: 10.5px; border-radius: 8px; flex: 1; color: var(--primary); border-color: var(--border); background: var(--surface);" onclick="editPeserta('${t.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit Harga</button>`;
                         
-                        actionHtml += `<button class="btn btn-outline no-select" style="padding: 8px 12px; font-size: 10px; border-radius: 8px; width: auto; color: var(--danger); border-color: var(--danger-light); background: var(--danger-light);" onclick="deletePeserta('${t.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+                        actionHtml += `<button class="btn btn-outline no-select" style="padding: 10px 12px; font-size: 10.5px; border-radius: 8px; flex: 1; color: var(--danger); border-color: var(--danger-light); background: var(--danger-light);" onclick="deletePeserta('${t.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Hapus</button>`;
                     }
 
+                    // LOGIKA READ-ONLY SHIELD (MENGHILANGKAN FALSE AFFORDANCE)
+                    let svgIconKanan = isKiosk ? '' : (isLunas 
+                        ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3" style="filter: drop-shadow(0 2px 4px rgba(16,185,129,0.3));"><polyline points="20 6 9 17 4 12"/></svg>` 
+                        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>`);
+
+                    let cursorStyle = 'cursor: default;'; // SURGICAL FIX: Kembalikan kursor normal ke seluruh area teks
+                    let clickActionIcon = isKiosk ? '' : `onclick="executeSosialTap('${t.id}')" onmousedown="this.style.transform='scale(0.85)'" onmouseup="this.style.transform='scale(1)'"`;
+
+                    let zonaB_HTML = isKiosk ? '' : `
+                            <!-- ZONA B: DETAIL MENU (AKORDION) -->
+                            <div class="no-select" style="width: 48px; border-left: 1px solid ${borderCard}; display: flex; align-items: center; justify-content: center; background: ${isLunas ? '#D1FAE5' : '#F8FAFC'}; transition: background 0.2s; cursor: pointer;" onmousedown="this.style.filter='brightness(0.95)'" onmouseup="this.style.filter='none'" onclick="let b=document.getElementById('pst-detail-${t.id}'); let c=document.getElementById('pst-chev-${t.id}'); if(b.style.display==='none'){b.style.display='block'; c.style.transform='rotate(180deg)';}else{b.style.display='none'; c.style.transform='rotate(0deg)';}">
+                                <svg id="pst-chev-${t.id}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isLunas ? '#059669' : '#64748B'}" stroke-width="3" style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>`;
+
+                    let accordion_HTML = isKiosk ? '' : `
+                        <div id="pst-detail-${t.id}" style="display: none; padding: 16px; border-top: 1px dashed ${borderCard}; background: #FFFFFF;">
+                            <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; margin-bottom: 12px;">Detail & Tindakan Admin:</div>
+                            <div style="font-size: 12px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; background: #F1F5F9; padding: 10px; border-radius: 8px; border: 1px solid #E2E8F0;">
+                                <span style="color: var(--primary);">Varian:</span> ${esc(pVarian)}
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                ${actionHtml}
+                            </div>
+                        </div>`;
+
                     html += `
-                    <div style="background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                            <div style="flex: 1; padding-right: 12px;">
-                                <div style="font-size: 14px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;">${esc(pNama)}</div>
-                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Varian: <span style="color: var(--primary); font-weight: 900;">${esc(pVarian)}</span></div>
+                    <div style="background: ${bgCard}; border: 1.5px solid ${borderCard}; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); overflow: hidden; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);">
+                        <div style="display: flex; align-items: stretch; ${cursorStyle}">
+                            <!-- ZONA A: TEXT (STATIC) & FAST TAP ICON -->
+                            <div class="no-select" style="flex: 1; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 900; color: ${isLunas ? '#065F46' : 'var(--text-main)'}; margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap;">${esc(pNama)} ${badgeStatus}</div>
+                                    <div style="font-size: 11px; font-weight: 700; color: ${isLunas ? '#059669' : 'var(--text-muted)'}; display: flex; align-items: center; gap: 8px;">
+                                        <span>Tagihan: Rp ${fmtRp(t.nom_awal)}</span>
+                                        <span style="opacity: 0.5;">|</span>
+                                        <span style="color: ${colorStatus}; font-weight: 900;">Sisa: Rp ${fmtRp(sisa)}</span>
+                                    </div>
+                                </div>
+                                <div style="padding: 12px; margin-right: -6px; cursor: ${isKiosk ? 'default' : 'pointer'}; transition: transform 0.2s; display: flex; align-items: center; justify-content: center;" ${clickActionIcon}>
+                                    ${svgIconKanan}
+                                </div>
                             </div>
-                            <div style="font-size: 9px; font-weight: 900; background: ${bgStatus}; color: ${colorStatus}; padding: 4px 8px; border-radius: 6px; border: 1px solid ${colorStatus}; opacity: 0.8; letter-spacing: 0.5px;">
-                                ${textStatus}
-                            </div>
+                            ${zonaB_HTML}
                         </div>
-                        
-                        <div style="background: #F8FAFC; border-radius: 8px; padding: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: ${actionHtml ? '12px' : '0'}; border: 1px solid #E2E8F0;">
-                            <div>
-                                <div style="font-size: 9px; font-weight: 800; color: #94A3B8; text-transform: uppercase;">Harga/Tagihan</div>
-                                <div style="font-size: 12px; font-weight: 900; color: var(--text-main);">Rp ${fmtRp(t.nom_awal)}</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 9px; font-weight: 800; color: #94A3B8; text-transform: uppercase;">Sisa Utang</div>
-                                <div style="font-size: 13px; font-weight: 900; color: ${colorStatus};">Rp ${fmtRp(sisa)}</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                            ${actionHtml}
-                        </div>
+                        ${accordion_HTML}
                     </div>`;
                 });
                 
@@ -13040,73 +13183,10 @@ if (tipe === 'KEG') {
             }, 1000);
 
             // ==========================================
-            // THE SOCIAL TAPPING SYSTEM (UI & LOGIC)
+            // THE UNIFIED SOCIAL LEDGER (SMART FAST-TAP)
             // ==========================================
-            window.openSosialTap = function(idEvent) {
-                if(isKiosk) return showToast("DITOLAK: Akses ilegal terdeteksi.");
-                let evData = state.event.find(e => e.id === idEvent);
-                if (!evData) return;
-
-                // Cek atau buat DOM Modal
-                if (!document.getElementById('mod-sosial-tap')) {
-                    document.body.insertAdjacentHTML('beforeend', `
-                        <div id="mod-sosial-tap" class="modal" style="z-index: 4010;">
-                            <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh;">
-                                <div style="background: var(--surface); padding: 20px 24px 16px 24px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); border-radius: 24px 24px 0 0;">
-                                    <button class="close-modal" style="top: 16px;" onclick="closeModal('mod-sosial-tap')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                                    <h3 style="font-size: 18px; font-weight: 900; color: #059669; display:flex; align-items:center; gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Absensi Sosial</h3>
-                                    <div id="tap-sosial-title" style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 4px;">Nama Acara</div>
-                                </div>
-                                <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
-                                    <div style="font-size: 10px; font-weight: 800; color: #64748B; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">Ketuk nama untuk melunasi iuran:</div>
-                                    <div id="tap-sosial-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    `);
-                }
-
-                document.getElementById('tap-sosial-title').innerText = String(evData.nama).replace(/\[SOSIAL\]/i, '').trim();
-
-                let html = '';
-                let pesertaTrx = state.trx.filter(t => !t.is_deleted && t.tipe === 'peserta' && t.id_event === idEvent);
-                
-                // Urutkan berdasarkan nama abjad (Mengambil dari cache state anggota)
-                pesertaTrx.sort((a,b) => {
-                    let nmA = state.anggota.find(ag=>ag.id === a.id_anggota)?.nama || '';
-                    let nmB = state.anggota.find(ag=>ag.id === b.id_anggota)?.nama || '';
-                    return nmA.localeCompare(nmB);
-                });
-
-                if (pesertaTrx.length === 0) {
-                    html = '<div style="grid-column: span 2; text-align:center; padding: 20px; font-size:11px; color:#94A3B8; border:1.5px dashed #CBD5E1; border-radius:12px;">Tidak ada tagihan tertinggal.</div>';
-                } else {
-                    pesertaTrx.forEach(t => {
-                        let isLunas = t.nom_final >= t.nom_awal;
-                        let infoArr = t.ket.split('|');
-                        let pNama = infoArr.shift().replace('Peserta:', '').trim();
-                        let nmAwal = t.nom_awal; // Nominal Tarif Iuran
-                        
-                        let bgCol = isLunas ? '#10B981' : '#F1F5F9';
-                        let txtCol = isLunas ? '#FFFFFF' : '#475569';
-                        let borderCol = isLunas ? '#059669' : '#CBD5E1';
-                        let svgIcon = isLunas 
-                            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>` 
-                            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/></svg>`;
-
-                        html += `
-                        <div class="no-select" style="background: ${bgCol}; color: ${txtCol}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 12px 10px; cursor: pointer; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: space-between; box-shadow: ${isLunas ? '0 4px 10px rgba(16,185,129,0.3)' : 'inset 0 2px 4px rgba(0,0,0,0.02)'};" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onclick="executeSosialTap('${t.id}')">
-                            <div style="font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px;">${esc(pNama)}</div>
-                            ${svgIcon}
-                        </div>`;
-                    });
-                }
-
-                document.getElementById('tap-sosial-grid').innerHTML = html;
-                openModal('mod-sosial-tap');
-            };
-
             window.executeSosialTap = async function(idPeserta) {
+                if (isKiosk) return showToast("DITOLAK: Mode Audit Aktif. Tidak dapat mengubah data.");
                 if (window.isProcessingTransaction) return;
                 
                 let pst = state.trx.find(t => t.id === idPeserta);
@@ -13121,17 +13201,23 @@ if (tipe === 'KEG') {
                     let namaPeserta = pst.ket.split('|')[0].replace('Peserta:', '').trim();
                     let isLunas = pst.nom_final >= pst.nom_awal;
 
+                    // MESIN CONTEXT-AWARE: Universal Fast-Tap
+                    let isSosialMode = evData && evData.sifat === 'sosial';
+                    let alokSuffix = isSosialMode ? ' [ALOK:SOS]' : '';
+                    let namaMutasi = isSosialMode ? `Iuran Sosial: ${namaPeserta}` : `Terima Pembayaran: ${namaPeserta}`;
+
                     try { idb.transaction('trx', 'readonly'); } catch(err) { await initDB(); }
 
                     if (!isLunas) {
                         // 1. Eksekusi Pembayaran (Uang Masuk)
-                        let bayar = pst.nom_awal;
-                        let pstUpdate = { ...pst, nom_final: bayar };
+                        let bayar = pst.nom_awal - pst.nom_final; // SISA TAGIHAN, Mencegah Overpay jika dicicil
+                        let newNomFinal = pst.nom_final + bayar;
+                        let pstUpdate = { ...pst, nom_final: newNomFinal };
                         
                         let tIn = {
                             id: genID('TX'), ts: Date.now(), tipe: 'masuk',
                             nom_awal: bayar, nom_final: bayar, 
-                            ket: `Iuran Sosial: ${namaPeserta} [ID:${pst.id}] [ALOK:SOS]`, kat: 'Pembayaran Program', status: 'lunas',
+                            ket: `${namaMutasi} [ID:${pst.id}]${alokSuffix}`, kat: 'Pembayaran Program', status: 'lunas',
                             id_event: pst.id_event, id_anggota: pst.id_anggota, id_dompet: targetDompet, is_deleted: false, year: new Date().getFullYear()
                         };
 
@@ -13149,11 +13235,9 @@ if (tipe === 'KEG') {
 
                     } else {
                         // 2. Eksekusi Batal Pembayaran (Rollback Void)
-                        // Cari transaksi uang masuk yang membawa flag [ID:PST-XXXX]
                         let tInMatchIdx = state.trx.findIndex(t => t.tipe === 'masuk' && !t.is_deleted && t.kat === 'Pembayaran Program' && String(t.ket).includes(`[ID:${pst.id}]`));
                         
                         if (tInMatchIdx > -1) {
-                            // PROTEKSI ANTI-DEFISIT (Mencegah batal bayar jika kas SOS sudah minus)
                             let tInCek = state.trx[tInMatchIdx];
                             let dIn = 0, dOut = 0, dPend = 0;
                             state.trx.filter(x => !x.is_deleted && (x.id_dompet === targetDompet || (!x.id_dompet && targetDompet === 'DP-UTAMA'))).forEach(x => {
@@ -13165,7 +13249,9 @@ if (tipe === 'KEG') {
                                 return showToast("GAGAL VOID: Saldo Dompet tidak cukup untuk menarik uang kembali.");
                             }
 
-                            let pstUpdate = { ...pst, nom_final: 0 };
+                            // THE SHADOW DESYNC FIX: Matematika Dinamis Pengurangan (Bukan Paksa 0)
+                            let newNomFinalVoid = Math.max(0, pst.nom_final - tInCek.nom_final);
+                            let pstUpdate = { ...pst, nom_final: newNomFinalVoid };
                             let tInVoid = { ...tInCek, is_deleted: true };
 
                             await new Promise((resolve, reject) => {
@@ -13182,8 +13268,8 @@ if (tipe === 'KEG') {
                         }
                     }
 
-                    // Re-render UI Siluman (Tanpa loading screen)
-                    window.openSosialTap(pst.id_event);
+                    // Re-render UI Siluman (The Unified Refresh)
+                    window.renderPesertaList();
                     if(typeof updateDashboard === 'function') updateDashboard(); 
                     if(typeof renderAcara === 'function') renderAcara(); 
 
@@ -13196,3 +13282,4 @@ if (tipe === 'KEG') {
         </script>
 </body>
 </html>    
+  
