@@ -7695,12 +7695,20 @@ if (tipe === 'KEG') {
                 if (modTitle) modTitle.innerText = "R 05";
 
                 let fetchSuccess = false;
+
                 try {
-                    if (navigator.onLine && typeof loadFromCloud === 'function') {
-                        // Tarik Data Cloud Secara Singkat & Sinkron. Tangkap return boolean mutlak.
-                        fetchSuccess = await loadFromCloud(true);
+                    if (navigator.onLine) {
+                        // JALUR PINTAR (THE AUTO-RESOLVER PROTOCOL): Flush Aspirasi Warga sebelum Load
+                        if (localStorage.getItem('nav_unsynced') === 'true' && typeof syncToCloud === 'function') {
+                            await syncToCloud(true);
+                        }
+                        if (typeof loadFromCloud === 'function') {
+                            // Tarik Data Cloud Secara Singkat & Sinkron. Tangkap return boolean mutlak.
+                            fetchSuccess = await loadFromCloud(true);
+                        }
                     }
                 } catch(e) { console.warn("Lokal Cache digunakan."); }
+
 
                 if(typeof updateDashboard === 'function') updateDashboard();
                 let mod = document.getElementById('mod-identity');
@@ -9951,20 +9959,17 @@ if (tipe === 'KEG') {
         </div>
 
         <!-- MODAL VIRTUAL ASSISTANT (NAVA AI) -->
-        <div id="mod-ai-chat" class="modal" style="z-index: 99999; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: rgba(15, 23, 42, 0.6); align-items: flex-end; padding: 0;">
-            <!-- [SURGICAL FIX] Penambahan max-height: 100% untuk mencegah Overflow Atas (Header Tertelan) saat Keyboard Muncul -->
-            <div class="modal-box no-select" style="background: var(--bg); border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; margin: 0 auto; height: 85vh; max-height: 100%; display: flex; flex-direction: column; padding: 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.3); overflow: hidden;">
+        <div id="mod-ai-chat" class="modal" style="z-index: 99999; padding: 0;">
+            <!-- [SURGICAL FIX V16 - THE PERFECT MATH ENGINE] Kalkulasi matematis murni Frame-by-Frame tanpa transisi (Bebas Pantulan 100%) -->
+            <div id="nava-ai-box" class="modal-box no-select" style="position: absolute; left: 0; right: 0; width: 100%; max-width: 600px; margin: 0 auto; background: var(--bg); display: flex; flex-direction: column; padding: 0; box-shadow: var(--shadow-lg); overflow: hidden;">
                 
-                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 5;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="position: relative;">
                             <div style="width: 36px; height: 36px; background: #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#1E3A8A">
-                                    <!-- Sparkle Berisi Penuh (Proporsional di Pojok) -->
                                     <path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/>
-                                    <!-- Kotak Terputus (Padding Lebar) -->
                                     <path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                                    <!-- Teks 'AI' Presisi di Tengah -->
                                     <g stroke="currentColor" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="miter">
                                         <path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" />
                                         <path d="M 8.7 13.5 H 12.3" />
@@ -9979,23 +9984,73 @@ if (tipe === 'KEG') {
                             <div style="font-size: 10px; font-weight: 600; color: #BFDBFE;">Asisten Virtual <span class="font-nasa">NAVASENA</span></div>
                         </div>
                     </div>
-                    <button class="close-modal" style="position: static; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px;" onclick="closeModal('mod-ai-chat')">
+                    <button class="close-modal" style="position: static; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px; transform: scale(1);" onclick="closeModal('mod-ai-chat')">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
 
-                <div id="ai-chat-history" style="flex: 1; padding: 20px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth;">
+                <div id="ai-chat-history" style="flex: 1; min-height: 0; padding: 20px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; overscroll-behavior: contain;">
                     <!-- Pesan akan masuk ke sini via JS -->
                 </div>
 
-                <div style="padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02);">
-                    <input type="text" id="ai-chat-input" placeholder="Tanya sesuatu tentang aplikasi..." autocomplete="off" style="flex: 1; background: #F1F5F9; border: 1.5px solid #E2E8F0; border-radius: 20px; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text-main); margin: 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);" onkeypress="if(event.key === 'Enter') window.sendAIMessage()">
+                <div style="padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02); z-index: 5;">
+                    <input type="text" id="ai-chat-input" placeholder="Tanya sesuatu tentang aplikasi..." autocomplete="off" style="flex: 1; background: #F1F5F9; border: 1.5px solid #E2E8F0; border-radius: 20px; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text-main); margin: 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);" onkeypress="if(event.key === 'Enter') window.sendAIMessage()" onfocus="if(window.navaAiViewportSync) window.navaAiViewportSync()">
                     <button id="btn-send-ai" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-grad); border: none; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3); transition: 0.2s;" onclick="window.sendAIMessage()" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                 </div>
             </div>
-        </div>
+            
+            <script>
+            
+                // THE VISUAL VIEWPORT DUAL-ANCHOR ENGINE (ANTI-HANGING MODAL)
+                window.navaAiViewportSync = function() {
+                    let aiBox = document.getElementById('nava-ai-box');
+                    let aiMod = document.getElementById('mod-ai-chat');
+                    let historyBox = document.getElementById('ai-chat-history');
+                    if (!aiBox || aiMod.style.display === 'none') return;
+                    
+                    // MATIKAN TRANSISI CSS MUTLAK untuk mencegah efek pantulan (Bouncing)
+                    aiBox.style.transition = 'none';
+                    
+                    let realHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                    let offsetTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+                    let windowHeight = window.innerHeight;
+
+                    // Deteksi: Apakah viewport menyusut > 150px (Indikasi mutlak Keyboard Terbuka)
+                    let isKeyboardOpen = (windowHeight - realHeight) > 150;
+
+                    if (isKeyboardOpen) {
+                        // STATE 1: KEYBOARD TERBUKA -> THE TOP ANCHOR (Mentok Address Bar)
+                        aiBox.style.height = realHeight + 'px';
+                        aiBox.style.top = offsetTop + 'px';
+                        aiBox.style.bottom = 'auto'; // Bebaskan dari bawah
+                        aiBox.style.borderRadius = '0';
+                    } else {
+                        // STATE 2: KEYBOARD TERTUTUP -> THE BOTTOM ANCHOR (Rata Lantai Layar)
+                        aiBox.style.height = '85dvh'; // Kembalikan ke tinggi dinamis Bottom Sheet
+                        aiBox.style.top = 'auto';     // Bebaskan ikatan dari atas
+                        aiBox.style.bottom = '0px';   // KUNCI MUTLAK KE BAWAH agar tidak ada celah menggantung
+                        aiBox.style.borderRadius = '24px 24px 0 0';
+                    }
+                    
+                    // Hajar balik scroll nakal dari browser
+                    window.scrollTo(0,0);
+                    if(document.body) document.body.scrollTop = 0;
+                    if(document.documentElement) document.documentElement.scrollTop = 0;
+                    
+                    // Pertahankan fokus di chat terbawah
+                    if(historyBox) historyBox.scrollTop = historyBox.scrollHeight;
+                };
+
+                // Pasang sensor presisi tinggi
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', window.navaAiViewportSync);
+                    window.visualViewport.addEventListener('scroll', window.navaAiViewportSync);
+                } else {
+                    window.addEventListener('resize', window.navaAiViewportSync);
+                }
+            </script>     
 
         <!-- PRINT CONTAINER -->
         <div id="print-lpj-container"></div>
@@ -10426,7 +10481,7 @@ if (tipe === 'KEG') {
                         return showToast(`GAGAL: Saldo ${dName} tidak cukup untuk melunasi nota (Butuh Rp ${fmtRp(deductMap[dId])})!`);
                     }
                 }
-
+                
                 openConfirm("Lunasi Semua Nota?", `Melunasi ${targetNotas.length} nota talangan sebesar Rp ${fmtRp(totalNom)}. Uang akan ditarik dari dompet asalnya masing-masing.`, "info", async () => {
                     isProcessingTransaction = true;
                     try {
@@ -13574,18 +13629,22 @@ if (tipe === 'KEG') {
                 
                 let mod = document.getElementById('mod-ai-chat');
                 document.body.appendChild(mod); // Bawa ke tumpukan z-index teratas
+                
+                // [SURGICAL FIX V15]: Persiapkan layout Bottom Sheet sebelum modal tampil agar transisi mulus
+                if (window.navaAiViewportSync) window.navaAiViewportSync();
+                
                 openModal('mod-ai-chat');
                 
                 if (!aiChatInitialized) {
                     // Smart Markdown Formatting for First Greeting
                     // INJEKSI SURGICAL FIX: Hapus Emoji untuk standar UI Enterprise
-                    let greetingText = "Halo! Saya **NAVA**, Asisten Virtual Karang Taruna NAVASENA.\n\nAda yang bisa saya bantu terkait informasi operasional kas, cara melihat transparansi dana, aturan XP, atau sekadar bertanya tentang aplikasi ini?";
+                    let greetingText = "Halo! Saya **NAVA**, Asisten Virtual Karang Taruna NAVASENA.\n\nSilakan tanyakan apa saja terkait operasional kas, transparansi dana, pedoman XP, atau cara menggunakan Portal NAVASENA ini.";
                     appendAIMessage(greetingText, 'ai');
                     aiChatInitialized = true;
                 }
                 
-                // Mencegah keyboard HP menghalangi pandangan (Scroll Lock)
-                setTimeout(() => document.getElementById('ai-chat-input').focus(), 300);
+                // [SURGICAL FIX V15]: AUTO-FOCUS DIAMPUTASI MUTLAK. 
+                // Keyboard tidak akan lagi menyembur keluar secara otomatis. Pengguna memegang kendali penuh.
             };
 
             window.sendAIMessage = async function() {
@@ -13788,12 +13847,13 @@ if (tipe === 'KEG') {
                     
                     chatContext += "User: " + text + shadowData + "\nNAVA: ";
 
-                    // [SURGICAL FIX: THE DEADLOCK BREAKER] Mengganti fetch Native tanpa Timeout dengan fetchWithTimeout
+                    // [SURGICAL FIX: COGNITIVE TOLERANCE EXTENSION] 
+                    // Memperlebar pipa kesabaran Klien menjadi 60 Detik untuk menampung latensi 'Cold Start' Gemini 3.6
                     let response = await fetchWithTimeout(CLOUD_API_URL.trim() + "?token=" + CLOUD_API_TOKEN + "&action=ask_ai", {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({ message: chatContext })
-                    }, 25000); // 25 Detik Toleransi LLM Server
+                    }, 60000); // 60 Detik Toleransi Kognitif LLM
                     
                     let textResponse = await response.text();
                     let resData;
@@ -13810,11 +13870,14 @@ if (tipe === 'KEG') {
 
                         appendAIMessage(resData.reply, 'ai');
                     } else {
-                        // [SURGICAL FIX: ELEGANT ERROR HANDLING & SYSTEM TOKENS]
+                        // [SURGICAL FIX: TRANSPARENT ERROR LOGGING (ANTI-MASKING PROTOCOL)]
                         let errMsg = String(resData.message || '');
 
                         if (errMsg.includes('UrlFetchApp') || errMsg.includes('izin') || errMsg.includes('permission')) {
                             appendAIMessage("[SYS_WARN] **Sistem Keamanan Aktif:** Maaf, pengurus belum membuka izin akses (*Otorisasi Google*) agar saya bisa terhubung ke server utama. Mohon hubungi Bendahara untuk memperbarui izin skrip aplikasi ini.", 'ai');
+                        } else if (errMsg !== '') {
+                            // PEMBONGKARAN TOPENG KOSMETIK: Tampilkan pesan error sesungguhnya dari server GAS!
+                            appendAIMessage("[SYS_WARN] **KENDALA SERVER:** " + errMsg, 'ai');
                         } else {
                             appendAIMessage("[SYS_WARN] Maaf, saat ini saya sedang beristirahat atau mengalami kendala komunikasi dengan satelit pusat. Silakan coba beberapa saat lagi.", 'ai');
                         }
@@ -13823,16 +13886,14 @@ if (tipe === 'KEG') {
                     let typingBubble = document.getElementById(typingId);
                     if (typingBubble) typingBubble.remove();
                     // [SURGICAL FIX]: Diagnosa AbortError dari fetchWithTimeout akan dilontarkan secara natural
+
                     appendAIMessage("[SYS_ERR] **[DIAGNOSA KONEKSI]:** " + (e.name === 'AbortError' ? "Waktu koneksi habis (Timeout)." : e.message), 'ai');
                 }finally {
                     isAITyping = false;
                     document.getElementById('btn-send-ai').style.opacity = '1';
                     
-                    // INJEKSI SURGICAL FIX: ANTI-GHOST FOCUS SHIELD
-                    setTimeout(() => {
-                        let mod = document.getElementById('mod-ai-chat');
-                        if (mod && mod.style.display !== 'none') inputEl.focus();
-                    }, 100);
+                    // [SURGICAL FIX V15]: GHOST FOCUS DIAMPUTASI.
+                    // Keyboard tidak akan memaksa muncul kembali setelah AI selesai membalas pesan.
                 }
             };
 
