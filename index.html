@@ -1020,6 +1020,19 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
 
+    <!-- FLOATING ACTION BUTTON (FAB) NAVA AI ADMIN -->
+    <button class="fab kiosk-hide no-select" id="ai-fab" style="right: auto; left: 24px; background: var(--primary-grad);" onclick="pulseHaptic('light'); window.openAIChat()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#FFFFFF">
+            <path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/>
+            <path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <g stroke="currentColor" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="miter">
+                <path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" />
+                <path d="M 8.7 13.5 H 12.3" />
+                <path d="M 16 9.5 V 15.5" />
+            </g>
+        </svg>
+    </button>
+
     <!-- BOTTOM NAVIGATION (SPA ROUTER) -->
     <nav class="bottom-nav no-select">
         <div class="nav-item active" id="nav-home" onclick="navTo('home')">
@@ -1103,6 +1116,15 @@
             }
         };
 
+        // THE NAVA AI VIRTUAL ASSISTANT (FAILSAFE / STUB PROTOCOL)
+        window.openAIChat = function() {
+            if(typeof pulseHaptic === 'function') pulseHaptic('light');
+            // Menjinakkan Uncaught TypeError dan mencegah Omni-Hub UI Frozen
+            showToast("ℹ️ Fitur NAVA AI Assistant sedang dalam tahap pengembangan (Coming Soon).");
+            
+            // JIKA NANTI ANDA MENGHUBUNGKAN API PIHAK KETIGA (OPENAI/GEMINI), LETAKKAN LOGIKA PEMANGGILAN / MODAL DI SINI.
+        };
+
         // 1. TANGGAL HEADER DINAMIS
         function updateHeaderDate() {
             if(isKiosk) return;
@@ -1128,10 +1150,22 @@
             
             // Pengaturan Visibilitas Tombol Floating Action (FAB)
             const fab = document.getElementById('main-fab');
-            if(!isKiosk && (view === 'home' || view === 'trx')) {
-                if(fab) fab.style.display = 'flex'; 
+            const aiFab = document.getElementById('ai-fab');
+            
+            if(!isKiosk) {
+                // Tombol Transaksi (+): HANYA di Beranda & Mutasi
+                if(view === 'home' || view === 'trx') {
+                    if(fab) fab.style.display = 'flex'; 
+                } else {
+                    if(fab) fab.style.display = 'none';
+                }
+                
+                // Tombol NAVA AI: OMNIPRESENT (Muncul di SEMUA menu)
+                if(aiFab) aiFab.style.display = 'flex';
             } else {
+                // Keamanan Mutlak: Sembunyikan semuanya dari akses Warga (Mode Publik)
                 if(fab) fab.style.display = 'none';
+                if(aiFab) aiFab.style.display = 'none';
             }
 
             // Panggilan Modul Spesifik Menu
@@ -3367,42 +3401,58 @@
                                     isProcessingTransaction = true;
                                     // SURGICAL FIX: JIT DB Connection Healer
                                     try { idb.transaction('trx', 'readonly'); } catch(err) { await initDB(); }
+                                    
                                     let originalDbTrx = await new Promise(r => {
                                         const req = idb.transaction('trx', 'readonly').objectStore('trx').get(tTarget.id);
                                         req.onsuccess = e => r(e.target.result);
                                         req.onerror = () => r(null);
                                     });
                                     let t_update = {...(originalDbTrx || tTarget), is_deleted: true};
-                                    await saveStore('trx', t_update);
                                     
-                                    let safeIdx = state.trx.findIndex(t => t.id === tTarget.id);
-                                    if(safeIdx > -1) state.trx[safeIdx] = t_update;
+                                    let trxToSave = [t_update];
+                                    let updatedPst = null;
+                                    let pstIdx = -1;
 
-                                    // --- THE SHADOW ENTITY SYNCHRONIZER (MENGEMBALIKAN PIUTANG INVOICE) ---
+                                    // --- THE SHADOW ENTITY SYNCHRONIZER PRE-FETCH ---
                                     if (tTarget.tipe === 'masuk' && tTarget.kat === 'Pembayaran Program' && String(tTarget.ket).includes('[ID:PST-')) {
                                         let matchId = String(tTarget.ket).match(/\[ID:(PST-[^\]]+)\]/);
                                         if (matchId && matchId[1]) {
-                                            let pstIdx = state.trx.findIndex(x => x.id === matchId[1]);
+                                            pstIdx = state.trx.findIndex(x => x.id === matchId[1]);
                                             if (pstIdx > -1) {
                                                 let pstDb = await new Promise(r => {
                                                     const req = idb.transaction('trx', 'readonly').objectStore('trx').get(matchId[1]);
                                                     req.onsuccess = e => r(e.target.result); req.onerror = () => r(null);
                                                 });
                                                 if (pstDb) {
-                                                    let updatedPst = {...pstDb, nom_final: Math.max(0, pstDb.nom_final - tTarget.nom_final)};
-                                                    await saveStore('trx', updatedPst);
-                                                    state.trx[pstIdx] = updatedPst;
-                                                    
-                                                    // Auto-Refresh UI Daftar Peserta jika Modal sedang terbuka
-                                                    let modPeserta = document.getElementById('mod-kelola-peserta');
-                                                    if (modPeserta && modPeserta.style.display === 'flex') {
-                                                        if(typeof window.renderPesertaList === 'function') window.renderPesertaList();
-                                                    }
+                                                    updatedPst = {...pstDb, nom_final: Math.max(0, pstDb.nom_final - tTarget.nom_final)};
+                                                    trxToSave.push(updatedPst);
                                                 }
                                             }
                                         }
                                     }
-                                    // ------------------------------------------------------------------------
+                                    
+                                    // ATOMIC EXECUTION BATCH MUTLAK
+                                    await new Promise((resolve, reject) => {
+                                        let tx = idb.transaction('trx', 'readwrite');
+                                        trxToSave.forEach(t => tx.objectStore('trx').put(t));
+                                        tx.oncomplete = resolve;
+                                        tx.onerror = () => reject(tx.error);
+                                    });
+
+                                    localStorage.setItem('nav_unsynced', 'true');
+                                    
+                                    // SINKRONISASI RAM STATE
+                                    let safeIdx = state.trx.findIndex(t => t.id === tTarget.id);
+                                    if(safeIdx > -1) state.trx[safeIdx] = t_update;
+                                    
+                                    if (updatedPst && pstIdx > -1) {
+                                        state.trx[pstIdx] = updatedPst;
+                                        // Auto-Refresh UI Daftar Peserta jika Modal sedang terbuka
+                                        let modPeserta = document.getElementById('mod-kelola-peserta');
+                                        if (modPeserta && modPeserta.style.display === 'flex') {
+                                            if(typeof window.renderPesertaList === 'function') window.renderPesertaList();
+                                        }
+                                    }
 
                                     showToast("Transaksi berhasil dihapus & direvisi.");
                                     renderTrxList(false);
@@ -4783,7 +4833,7 @@ if (tipe === 'KEG') {
                     title = 'FUNGSI DANA KEGIATAN'; color = '#2563EB';
                     icon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`;
                     html = `
-                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Dana khusus untuk membiayai pelaksanaan program kerja Karang Taruna NAVASENA.</div>
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">Dana khusus untuk membiayai pelaksanaan program kerja Karang Taruna <span class="font-nasa" style="font-size: 1.1em; letter-spacing: 0.5px;">NAVASENA</span>.</div>
                         <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 16px; margin-bottom: 16px; transition: transform 0.2s; cursor: pointer;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
                             <div style="font-size: 10px; font-weight: 900; color: #2563EB; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center;">FUNGSI UTAMA: DANA KEGIATAN</div>
                             <div style="font-size: 12px; color: #1E3A8A; line-height: 1.5; font-weight: 600;">Dana ini berfungsi sebagai modal awal bagi Karang Taruna sebelum mencari dana tambahan dari donatur atau sponsor dalam mengadakan acara.</div>
@@ -5661,6 +5711,23 @@ if (tipe === 'KEG') {
             </button>
             
             <div class="omni-capsule" id="omni-capsule">
+
+                <!-- 0. NAVA VIRTUAL ASSISTANT (AI) -->
+                <button class="omni-item" style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); border: 1.5px solid #BFDBFE; box-shadow: 0 6px 15px rgba(30, 58, 138, 0.4);" onclick="window.openAIChat(); closeOmniHub();" title="Tanya Asisten AI">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#FFFFFF">
+                        <!-- Sparkle Berisi Penuh (Proporsional di Pojok) -->
+                        <path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/>
+                        <!-- Kotak Terputus (Memberi Ruang Napas Luas) -->
+                        <path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <!-- Teks 'AI' Presisi di Tengah -->
+                        <g stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter">
+                            <path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" />
+                            <path d="M 8.7 13.5 H 12.3" />
+                            <path d="M 16 9.5 V 15.5" />
+                        </g>
+                    </svg>
+                </button>
+
                 <!-- 1. Kotak Suara (Aspirasi) -->
                 <button class="omni-item" style="background: #9D174D;" onclick="openModal('mod-aspirasi'); closeOmniHub();" title="Kotak Suara">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -6322,6 +6389,10 @@ if (tipe === 'KEG') {
                 let hasPendingUangMuka = state.trx.some(t => t.id_anggota === id && (t.status === 'pending' || t.status === 'talangan') && !t.is_deleted);
                 let isPjAktif = state.dompet.some(d => d.id_anggota === id && d.is_pj && d.status === 'aktif');
                 if(hasPendingUangMuka || isPjAktif) return showToast("TOLAK: Anggota ini masih membawa Uang Muka / Dana Kepanitiaan yang belum di-LPJ-kan!");
+                
+                // INJEKSI SURGICAL FIX: PIUTANG PESERTA BLACK HOLE SHIELD
+                let hasUnpaidInvoice = state.trx.some(t => t.id_anggota === id && t.tipe === 'peserta' && t.nom_final < t.nom_awal && !t.is_deleted);
+                if (hasUnpaidInvoice) return showToast("TOLAK: Anggota ini memiliki tagihan Partisipasi/Sosial yang belum dilunasi. Hapus tagihannya atau lunasi terlebih dahulu!");
 
                 openConfirm("Hapus Anggota?", "Data anggota ini akan dihapus dari sistem. Transaksi keuangannya di masa lalu akan tetap aman tersimpan.", "danger", async () => {
                     try {
@@ -7487,7 +7558,8 @@ if (tipe === 'KEG') {
                     isProcessingTransaction = true;
                     try {
                         // SURGICAL FIX: JIT DB Connection Healer
-                        try { idb.transaction('trx', 'readonly'); } catch(err) { await initDB(); }
+                        try { idb.transaction(['trx', 'dompet'], 'readonly'); } catch(err) { await initDB(); }
+                        
                         let originalDbTrx = await new Promise(r => {
                             const req = idb.transaction('trx', 'readonly').objectStore('trx').get(id);
                             req.onsuccess = e => r(e.target.result);
@@ -7495,37 +7567,33 @@ if (tipe === 'KEG') {
                         });
 
                         let t_update = {...(originalDbTrx || targetTrx), is_deleted: false};
-                        await saveStore('trx', t_update);
                         
-                        let safeIdxRestore = state.trx.findIndex(t => t.id === id);
-                        if(safeIdxRestore > -1) state.trx[safeIdxRestore] = t_update;
+                        let trxToSave = [t_update];
+                        let updatedPst = null;
+                        let pstIdx = -1;
+                        let updatedPair = null;
+                        let resurrectedDompet = null;
+                        let idxDmp = -1;
 
-                        // --- THE SHADOW ENTITY SYNCHRONIZER (PEMULIHAN PIUTANG INVOICE) ---
+                        // --- THE SHADOW ENTITY SYNCHRONIZER PRE-FETCH ---
                         if (t_update.tipe === 'masuk' && t_update.kat === 'Pembayaran Program' && String(t_update.ket).includes('[ID:PST-')) {
                             let matchId = String(t_update.ket).match(/\[ID:(PST-[^\]]+)\]/);
                             if (matchId && matchId[1]) {
-                                let pstIdx = state.trx.findIndex(x => x.id === matchId[1]);
+                                pstIdx = state.trx.findIndex(x => x.id === matchId[1]);
                                 if (pstIdx > -1) {
                                     let pstDb = await new Promise(r => {
                                         const req = idb.transaction('trx', 'readonly').objectStore('trx').get(matchId[1]);
                                         req.onsuccess = e => r(e.target.result); req.onerror = () => r(null);
                                     });
                                     if (pstDb) {
-                                        let updatedPst = {...pstDb, nom_final: pstDb.nom_final + t_update.nom_final};
-                                        await saveStore('trx', updatedPst);
-                                        state.trx[pstIdx] = updatedPst;
-                                        
-                                        // Auto-Refresh UI Daftar Peserta jika Modal sedang terbuka
-                                        let modPeserta = document.getElementById('mod-kelola-peserta');
-                                        if (modPeserta && modPeserta.style.display === 'flex') {
-                                            if(typeof window.renderPesertaList === 'function') window.renderPesertaList();
-                                        }
+                                        updatedPst = {...pstDb, nom_final: pstDb.nom_final + t_update.nom_final};
+                                        trxToSave.push(updatedPst);
                                     }
                                 }
                             }
                         }
                         
-                        // --- THE SYSTEM PAIR SYNCHRONIZER (PEMULIHAN UANG MUKA/TRANSFER INTERNAL) ---
+                        // --- THE SYSTEM PAIR SYNCHRONIZER PRE-FETCH ---
                         let pairIdx = -1;
                         if (t_update.kat === 'Uang Muka Kegiatan' && t_update.tipe === 'keluar') {
                             pairIdx = state.trx.findIndex(x => x.kat === 'Transfer Internal' && x.tipe === 'masuk' && x.ts === t_update.ts + 1 && x.is_deleted);
@@ -7538,24 +7606,55 @@ if (tipe === 'KEG') {
                                 req.onsuccess = e => r(e.target.result); req.onerror = () => r(null);
                             });
                             if (pairTrxDb) {
-                                let updatedPair = {...pairTrxDb, is_deleted: false};
-                                await saveStore('trx', updatedPair);
-                                state.trx[pairIdx] = updatedPair;
+                                updatedPair = {...pairTrxDb, is_deleted: false};
+                                trxToSave.push(updatedPair);
                                 
-                                // [SURGICAL FIX]: THE GHOST WALLET RESURRECTION PROTOCOL
-                                // Membangkitkan kembali Dompet PJ jika sebelumnya mati (diarsipkan) akibat ditarik saldonya
+                                // THE GHOST WALLET RESURRECTION PROTOCOL
                                 let targetDpId = (t_update.tipe === 'masuk') ? t_update.id_dompet : updatedPair.id_dompet;
                                 if (targetDpId && targetDpId.startsWith('DP-') && targetDpId !== 'DP-UTAMA') {
-                                    let idxDmp = state.dompet.findIndex(d => d.id === targetDpId);
+                                    idxDmp = state.dompet.findIndex(d => d.id === targetDpId);
                                     if (idxDmp > -1 && state.dompet[idxDmp].status === 'arsip') {
-                                        let resurrectedDompet = {...state.dompet[idxDmp], status: 'aktif'};
-                                        await saveStore('dompet', resurrectedDompet);
-                                        state.dompet[idxDmp] = resurrectedDompet;
+                                        resurrectedDompet = {...state.dompet[idxDmp], status: 'aktif'};
                                     }
                                 }
                             }
                         }
-                        // ------------------------------------------------------------------------
+
+                        // ATOMIC EXECUTION BATCH MUTLAK
+                        await new Promise((resolve, reject) => {
+                            let stores = ['trx'];
+                            if (resurrectedDompet) stores.push('dompet');
+                            let tx = idb.transaction(stores, 'readwrite');
+                            
+                            trxToSave.forEach(t => tx.objectStore('trx').put(t));
+                            if (resurrectedDompet) tx.objectStore('dompet').put(resurrectedDompet);
+                            
+                            tx.oncomplete = resolve;
+                            tx.onerror = () => reject(tx.error);
+                        });
+
+                        localStorage.setItem('nav_unsynced', 'true');
+                        
+                        // SINKRONISASI RAM STATE
+                        let safeIdxRestore = state.trx.findIndex(t => t.id === id);
+                        if(safeIdxRestore > -1) state.trx[safeIdxRestore] = t_update;
+
+                        if (updatedPst && pstIdx > -1) {
+                            state.trx[pstIdx] = updatedPst;
+                            // Auto-Refresh UI Daftar Peserta jika Modal sedang terbuka
+                            let modPeserta = document.getElementById('mod-kelola-peserta');
+                            if (modPeserta && modPeserta.style.display === 'flex') {
+                                if(typeof window.renderPesertaList === 'function') window.renderPesertaList();
+                            }
+                        }
+
+                        if (updatedPair && pairIdx > -1) {
+                            state.trx[pairIdx] = updatedPair;
+                        }
+
+                        if (resurrectedDompet && idxDmp > -1) {
+                            state.dompet[idxDmp] = resurrectedDompet;
+                        }
                         
                         showToast("Transaksi berhasil dipulihkan.");
                         openRecycleBin(); 
@@ -7566,6 +7665,7 @@ if (tipe === 'KEG') {
                         if(typeof renderAcara === 'function') renderAcara();
                     } catch(e) { showToast("Gagal memulihkan."); }
                     finally { isProcessingTransaction = false; }
+
                 }
             }
 
@@ -8671,7 +8771,10 @@ if (tipe === 'KEG') {
                                             <div style="color: #25D366; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></div>
                                             <div><b>[KLIK] Kirim Laporan WA:</b> Tekan tombol di paling bawah untuk merangkum arus kas menjadi teks dan mengirimkannya ke WhatsApp Grup.</div>
                                         </div>
-                                                                               
+                                              <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                            <div style="padding-top: 2px;"><div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; border-radius: 6px; padding: 3px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #BFDBFE;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#FFFFFF"><path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/><path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><g stroke="currentColor" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="miter"><path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" /><path d="M 8.7 13.5 H 12.3" /><path d="M 16 9.5 V 15.5" /></g></svg></div></div>
+                                            <div><b>[KLIK] NAVA AI Assistant:</b> Asisten finansial cerdas (AI) yang terhubung dengan seluruh database sistem. Tanyakan kepadanya mengenai rangkuman kas, data tunggakan anggota, aturan poin (XP), atau operasional Karang Taruna. NAVA akan membaca data dan menjawabnya secara akurat.</div>
+                                        </div>                                 
                                              <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: #38BDF8; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 0 0-10 10c0 5.523 4.477 10 10 10s10-4.477 10-10a10 10 0 0 0-10-10z"/><path d="M12 6a6 6 0 0 0-6 6c0 3.314 2.686 6 6 6s6-2.686 6-6a6 6 0 0 0-6-6z"/><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg></div>
                                             <div><b>[INFO] Mode Screensaver & Billboard:</b> Biarkan aplikasi menyala tanpa disentuh, sistem otomatis beralih menampilkan Top 5 Leaderboard dan Transaksi Terbaru secara elegan.</div>
@@ -8899,7 +9002,7 @@ if (tipe === 'KEG') {
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: #94A3B8; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
                                             <div><b>[KLIK] Executive Desk & Direktori:</b> Sentuh kartu identitas Pengurus atau klik tombol Direktori. Opsi menyalin Nomor Rekening dan tombol Chat WA akan langsung muncul.</div>
-                                        </div>
+                                        </div>                                        
                                     </div>
                                 </div>
                             </div>
@@ -9108,12 +9211,15 @@ if (tipe === 'KEG') {
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="color: #DC2626; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
                                             <div><b>[KLIK] Keluar:</b> Menghapus <i>cache</i> memori perangkat Anda dan kembali ke layar beranda publik.</div>
-                                        </div>
+                                        </div>                                        
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="padding-top: 2px;"><div style="background: #1E3A8A; color: white; border-radius: 6px; padding: 3px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg></div></div>
-                                            <div><b>[KLIK] Omni-Button & Kotak Suara:</b> Tombol mengambang di pojok kiri bawah. Gunakan <span style="display:inline-flex; align-items:center; gap:4px; background:#9D174D; color:white; padding:2px 6px; border-radius:4px; font-weight:900; font-size:9.5px; letter-spacing:0.5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Kotak Suara</span> untuk mengirim kritik/aduan yang dienkripsi agar pengurus bisa membacanya tanpa tahu identitas Anda. Dan ada juga akun media sosial,<br> Seperti: WhatsApp, Gmail, Instagram, Tiktok, YT Music. (Tinggal KLIK saja)</div>
+                                            <div><b>[KLIK] Omni-Button & Kotak Suara:</b> Tombol mengambang di pojok kiri bawah. Gunakan <span style="display:inline-flex; align-items:center; gap:4px; background:#9D174D; color:white; padding:2px 6px; border-radius:4px; font-weight:900; font-size:9.5px; letter-spacing:0.5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Kotak Suara</span> untuk mengirim kritik/aduan yang dienkripsi agar pengurus bisa membacanya tanpa tahu identitas Anda. Dan ada juga NAVA AI sertaakun media sosial,<br> Seperti: WhatsApp, Gmail, Instagram, Tiktok, YT Music. (Tinggal KLIK saja)</div>
                                         </div>
-                                        
+                                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                            <div style="padding-top: 2px;"><div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; border-radius: 6px; padding: 3px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #BFDBFE;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#FFFFFF"><path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/><path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><g stroke="currentColor" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="miter"><path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" /><path d="M 8.7 13.5 H 12.3" /><path d="M 16 9.5 V 15.5" /></g></svg></div></div>
+                                            <div><b>[KLIK] NAVA AI Assistant:</b> Asisten finansial cerdas (AI) yang terhubung dengan seluruh database sistem. Tanyakan kepadanya mengenai rangkuman kas, data tunggakan anggota, aturan poin (XP), atau operasional Karang Taruna. NAVA akan membaca data dan menjawabnya secara akurat.</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -9321,11 +9427,15 @@ if (tipe === 'KEG') {
                                             <div style="color: #DC2626; padding-top: 2px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
                                             <div><b>[KLIK] Keluar:</b> Menghapus <i>cache</i> memori perangkat Anda dan kembali ke layar beranda publik.</div>
                                         </div>
+                                        
                                         <div style="display: flex; gap: 10px; align-items: flex-start;">
                                             <div style="padding-top: 2px;"><div style="background: #1E3A8A; color: white; border-radius: 6px; padding: 3px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg></div></div>
-                                            <div><b>[KLIK] Omni-Button & Kotak Suara:</b> Tombol mengambang di pojok kiri bawah. Gunakan <span style="display:inline-flex; align-items:center; gap:4px; background:#9D174D; color:white; padding:2px 6px; border-radius:4px; font-weight:900; font-size:9.5px; letter-spacing:0.5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Kotak Suara</span> untuk mengirim kritik/aduan yang dienkripsi agar pengurus bisa membacanya tanpa tahu identitas Anda. Dan ada juga akun media sosial,<br> Seperti: WhatsApp, Gmail, Instagram, Tiktok, YT Music. (Tinggal KLIK saja)</div>
+                                            <div><b>[KLIK] Omni-Button & Kotak Suara:</b> Tombol mengambang di pojok kiri bawah. Gunakan <span style="display:inline-flex; align-items:center; gap:4px; background:#9D174D; color:white; padding:2px 6px; border-radius:4px; font-weight:900; font-size:9.5px; letter-spacing:0.5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Kotak Suara</span> untuk mengirim kritik/aduan yang dienkripsi agar pengurus bisa membacanya tanpa tahu identitas Anda. Dan ada juga NAVA AI serta akun media sosial,<br> Seperti: WhatsApp, Gmail, Instagram, Tiktok, YT Music. (Tinggal KLIK saja)</div>
                                         </div>
-                                        
+                                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                            <div style="padding-top: 2px;"><div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; border-radius: 6px; padding: 3px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #BFDBFE;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#FFFFFF"><path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/><path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><g stroke="currentColor" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="miter"><path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" /><path d="M 8.7 13.5 H 12.3" /><path d="M 16 9.5 V 15.5" /></g></svg></div></div>
+                                            <div><b>[KLIK] NAVA AI Assistant:</b> Asisten finansial cerdas (AI) yang terhubung dengan seluruh database sistem. Tanyakan kepadanya mengenai rangkuman kas, data tunggakan anggota, aturan poin (XP), atau operasional Karang Taruna. NAVA akan membaca data dan menjawabnya secara akurat.</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -9837,6 +9947,53 @@ if (tipe === 'KEG') {
                 <button class="btn no-select" style="width: 100%; padding: 16px; font-size: 13px; font-weight: 900; background: rgba(56, 189, 248, 0.1); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: none; border-radius: 12px; transition: 0.2s;" onmousedown="this.style.background='rgba(56, 189, 248, 0.2)'" onmouseup="this.style.background='rgba(56, 189, 248, 0.1)'" onclick="closeModal('mod-rewind')">
                     TUTUP REWIND
                 </button>
+            </div>
+        </div>
+
+        <!-- MODAL VIRTUAL ASSISTANT (NAVA AI) -->
+        <div id="mod-ai-chat" class="modal" style="z-index: 99999; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: rgba(15, 23, 42, 0.6); align-items: flex-end; padding: 0;">
+            <!-- [SURGICAL FIX] Penambahan max-height: 100% untuk mencegah Overflow Atas (Header Tertelan) saat Keyboard Muncul -->
+            <div class="modal-box no-select" style="background: var(--bg); border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; margin: 0 auto; height: 85vh; max-height: 100%; display: flex; flex-direction: column; padding: 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.3); overflow: hidden;">
+                
+                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="position: relative;">
+                            <div style="width: 36px; height: 36px; background: #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#1E3A8A">
+                                    <!-- Sparkle Berisi Penuh (Proporsional di Pojok) -->
+                                    <path d="M 19 1.5 C 19 4.5 21 5.5 23.5 5.5 C 21 5.5 19 6.5 19 9.5 C 19 6.5 17 5.5 14.5 5.5 C 17 5.5 19 4.5 19 1.5 Z" fill="currentColor"/>
+                                    <!-- Kotak Terputus (Padding Lebar) -->
+                                    <path d="M 13 4.5 H 7 C 4.5 4.5 2.5 6.5 2.5 9 V 16 C 2.5 18.5 4.5 20.5 7 20.5 H 17 C 19.5 20.5 21.5 18.5 21.5 16 V 11.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                                    <!-- Teks 'AI' Presisi di Tengah -->
+                                    <g stroke="currentColor" stroke-width="2.2" stroke-linecap="butt" stroke-linejoin="miter">
+                                        <path d="M 8 15.5 L 9.7 9.5 H 11.3 L 13 15.5" />
+                                        <path d="M 8.7 13.5 H 12.3" />
+                                        <path d="M 16 9.5 V 15.5" />
+                                    </g>
+                                </svg>
+                            </div>
+                            <div style="position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; background: #34D399; border: 2px solid #FFFFFF; border-radius: 50%;"></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 15px; font-weight: 900; color: #FFFFFF; letter-spacing: 0.5px;">NAVA AI</div>
+                            <div style="font-size: 10px; font-weight: 600; color: #BFDBFE;">Asisten Virtual <span class="font-nasa">NAVASENA</span></div>
+                        </div>
+                    </div>
+                    <button class="close-modal" style="position: static; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; width: 32px; height: 32px;" onclick="closeModal('mod-ai-chat')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+
+                <div id="ai-chat-history" style="flex: 1; padding: 20px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth;">
+                    <!-- Pesan akan masuk ke sini via JS -->
+                </div>
+
+                <div style="padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02);">
+                    <input type="text" id="ai-chat-input" placeholder="Tanya sesuatu tentang aplikasi..." autocomplete="off" style="flex: 1; background: #F1F5F9; border: 1.5px solid #E2E8F0; border-radius: 20px; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text-main); margin: 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);" onkeypress="if(event.key === 'Enter') window.sendAIMessage()">
+                    <button id="btn-send-ai" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-grad); border: none; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3); transition: 0.2s;" onclick="window.sendAIMessage()" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -10764,16 +10921,18 @@ if (tipe === 'KEG') {
                 if (tipe === 'dana') {
                     titleEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <span style="color:#059669;">RINCIAN DANA TERKELOLA</span>`;
                     
-                    let tIuran = 0, tDonasi = 0, tSaldoAwal = 0;
+                    // INJEKSI SURGICAL FIX: SEGREGASI LOGIKA UANG TIKET VS DONASI
+                    let tIuran = 0, tDonasi = 0, tSaldoAwal = 0, tTiket = 0;
                     state.trx.forEach(t => {
                         if(!t.is_deleted && (t.tipe === 'masuk' || t.tipe === 'iuran') && t.kat !== 'Transfer Internal' && t.kat !== 'Sisa Uang Muka' && !(t.ket||'').includes('Koreksi Saldo')) {
                             if (t.tipe === 'iuran') tIuran += t.nom_final;
                             else if (t.kat === 'Saldo Awal') tSaldoAwal += t.nom_final;
+                            else if (t.kat === 'Pembayaran Program') tTiket += t.nom_final;
                             else tDonasi += t.nom_final;
                         }
                     });
 
-                    let tTotal = tIuran + tDonasi + tSaldoAwal;
+                    let tTotal = tIuran + tDonasi + tSaldoAwal + tTiket;
 
                     html = `
                     <div style="background: #ECFDF5; border: 1.5px solid #A7F3D0; border-radius: 16px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.1);">
@@ -10807,6 +10966,20 @@ if (tipe === 'KEG') {
                             </div>
                             <div style="font-size: 14px; font-weight: 900; color: #D97706; flex-shrink: 0; white-space: nowrap; word-break: keep-all; min-width: max-content; text-align: right;">Rp&nbsp;${fmtRp(tDonasi)}</div>
                         </div>
+                        
+                        ${tTiket > 0 ? `
+                        <div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding-right: 8px;">
+                                <div style="width: 36px; height: 36px; background: #F3E8FF; color: #9333EA; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 12px; font-weight: 900; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dana Partisipasi</div>
+                                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Pembayaran Tiket / Kaos</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 14px; font-weight: 900; color: #9333EA; flex-shrink: 0; white-space: nowrap; word-break: keep-all; min-width: max-content; text-align: right;">Rp&nbsp;${fmtRp(tTiket)}</div>
+                        </div>` : ''}
 
                         ${tSaldoAwal > 0 ? `
                         <div style="background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between;">
@@ -11365,6 +11538,12 @@ if (tipe === 'KEG') {
                         }
                     } else {
                         ket = entryMode === 'sponsor' ? `Sponsor Dari: ${namaPenyumbang}` : `Donasi Dari: ${namaPenyumbang}`;
+                        
+                        // INJEKSI SURGICAL FIX: AUTO-ALOKASI VIRTUAL LEDGER
+                        if (targetDompet === 'DP-UTAMA') {
+                            let autoAlok = (evData && evData.sifat === 'sosial') ? 'SOS' : 'KEG';
+                            ket += ` [ALOK:${autoAlok}]`;
+                        }
                     }
 
                     let trx = {
@@ -13364,6 +13543,322 @@ if (tipe === 'KEG') {
                 }
             };
         </script>
+
+        <!-- =========================================================
+             MODULE JS: NAVA ARTIFICIAL INTELLIGENCE (VIRTUAL ASSISTANT)
+             ========================================================= -->
+        <style id="nava-ai-css">
+            .msg-bubble { max-width: 88%; padding: 12px 16px; border-radius: 16px; font-size: 13px; line-height: 1.5; font-weight: 600; position: relative; word-break: break-word; }
+            .msg-user { background: #E0F2FE; color: #0F172A; border: 1.5px solid #BAE6FD; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+            .msg-ai { background: #FFFFFF; color: #1E293B; border: 1.5px solid #E2E8F0; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+            .msg-ai b { color: #1E3A8A; font-weight: 900; }
+            .msg-ai i { color: #475569; font-weight: 700; }
+            .msg-ai ul { margin-top: 6px; margin-bottom: 6px; padding-left: 18px; }
+            .msg-ai li { margin-bottom: 4px; }
+            .typing-dots { display: flex; gap: 4px; align-items: center; height: 18px; }
+            .dot { width: 6px; height: 6px; background: #94A3B8; border-radius: 50%; animation: typeBounce 1.4s infinite ease-in-out both; }
+            .dot:nth-child(1) { animation-delay: -0.32s; }
+            .dot:nth-child(2) { animation-delay: -0.16s; }
+            @keyframes typeBounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        </style>
+
+        <script id="module-ai-assistant">
+            let isAITyping = false;
+            let aiChatInitialized = false;
+
+            window.openAIChat = function() {
+                if (!navigator.onLine) {
+                    // INJEKSI SURGICAL FIX: Memicu regex SVG Error bawaan showToast
+                    return showToast("Gagal: NAVA sedang tidur. Periksa koneksi internet Anda untuk membangunkannya.");
+                }
+                
+                let mod = document.getElementById('mod-ai-chat');
+                document.body.appendChild(mod); // Bawa ke tumpukan z-index teratas
+                openModal('mod-ai-chat');
+                
+                if (!aiChatInitialized) {
+                    // Smart Markdown Formatting for First Greeting
+                    // INJEKSI SURGICAL FIX: Hapus Emoji untuk standar UI Enterprise
+                    let greetingText = "Halo! Saya **NAVA**, Asisten Virtual Karang Taruna NAVASENA.\n\nAda yang bisa saya bantu terkait informasi operasional kas, cara melihat transparansi dana, aturan XP, atau sekadar bertanya tentang aplikasi ini?";
+                    appendAIMessage(greetingText, 'ai');
+                    aiChatInitialized = true;
+                }
+                
+                // Mencegah keyboard HP menghalangi pandangan (Scroll Lock)
+                setTimeout(() => document.getElementById('ai-chat-input').focus(), 300);
+            };
+
+            window.sendAIMessage = async function() {
+                let inputEl = document.getElementById('ai-chat-input');
+                let text = inputEl.value.trim();
+                
+                if (!text || isAITyping) return;
+                // INJEKSI SURGICAL FIX: Hapus Emoji
+                if (!navigator.onLine) return showToast("Gagal: Koneksi internet terputus.");
+
+                inputEl.value = '';
+                inputEl.focus(); // SURGICAL FIX: Sinkronisasi Fokus Mutlak sebelum Thread terputus oleh Async Await
+                appendAIMessage(text, 'user');
+                
+                isAITyping = true;
+                document.getElementById('btn-send-ai').style.opacity = '0.5';
+                
+                // THE COGNITIVE LOAD ANIMATION (Menyisipkan Animasi Titik)
+                let typingId = 'typing-' + Date.now();
+                let history = document.getElementById('ai-chat-history');
+                history.insertAdjacentHTML('beforeend', `
+                    <div id="${typingId}" class="msg-bubble msg-ai">
+                        <div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                `);
+                history.scrollTop = history.scrollHeight;
+
+                try {
+                
+                    // THE SMART MEMORY PROTOCOL (Mengingat Konteks Percakapan)
+                    let chatContext = "";
+                    let bubbles = document.querySelectorAll('#ai-chat-history .msg-bubble');
+                    // Ambil maksimal 4 pesan terakhir agar AI ingat arah pembicaraan
+                    let startIdx = Math.max(0, bubbles.length - 4); 
+                    for(let i = startIdx; i < bubbles.length; i++) {
+                        if(!bubbles[i].id.startsWith('typing-')) {
+                            let role = bubbles[i].classList.contains('msg-user') ? "User: " : "NAVA: ";
+                            let rawText = bubbles[i].innerText.replace(/\[SYSTEM_DATA_RAHASIA.*?\]/g, '[Spoof_Blocked]'); // SURGICAL FIX: Anti Prompt Injection
+                            chatContext += role + rawText + "\n";
+                        }
+                    }
+
+                    // THE OMNI-CONTEXT DYNAMIC ASSEMBLER
+                    let cRole = localStorage.getItem('nav_role');
+                    let cUid = localStorage.getItem('nav_user_id');
+                    let cName = "Bendahara/Admin";
+                    let cPersonal = "Mode Master (Tidak ada profil spesifik)";
+                    
+                    // LAPIS 1: THE PERFECT MIRROR
+                    if (cRole === 'warga') {
+                        cName = "Warga RT 05 (Publik)";
+                        cPersonal = "Mode Akses Publik";
+                    } else if (cRole === 'anggota' && cUid) {
+                        let ag = state.anggota.find(a => a.id === cUid);
+                        if (ag) {
+                            cName = ag.nama;
+                            let age = "Belum diisi";
+                            if(ag.tgl_lahir) {
+                                let bYear = new Date(ag.tgl_lahir).getFullYear();
+                                age = (new Date().getFullYear() - bYear) + " thn";
+                            }
+                            let ar = typeof getArrearsTextData === 'function' ? getArrearsTextData(cUid) : {count:0, nominal:0};
+                            let tKasStr = ar.count > 0 ? `${ar.count} bln (Rp ${fmtRp(ar.nominal)})` : "LUNAS";
+                            
+                            let pIuran = 0, pDonasi = 0, pTalang = 0;
+                            state.trx.forEach(t => {
+                                if(t.is_deleted || t.id_anggota !== cUid) return;
+                                if(t.tipe === 'iuran') pIuran += t.nom_final;
+                                else if(t.tipe === 'masuk' && !String(t.kat||'').match(/Transfer Internal|Saldo Awal|Sisa Uang Muka|Pembayaran Program|Koreksi/i)) pDonasi += t.nom_final;
+                                else if(t.tipe === 'keluar' && t.status === 'talangan') pTalang += t.nom_awal;
+                            });
+                            
+                            cPersonal = `Umur:${age}, Darah:${ag.gol_darah||'-'}, WA:${ag.wa||'-'}, Bank:${ag.bank_nama||'-'}(${ag.bank_rek||'-'}), Label:${ag.label||'-'}, XP:${ag.xp_total||0}(${ag.rank_name||'WARRIOR'}), UtangKas:${tKasStr}, T.Iuran:Rp${fmtRp(pIuran)}, T.Donasi:Rp${fmtRp(pDonasi)}, MenalangiKas:Rp${fmtRp(pTalang)}`;
+                        }
+                    }
+
+                    // LAPIS 2: THE GLOBAL BOARD
+                    let tKas = document.getElementById('dash-saldo') ? document.getElementById('dash-saldo').innerText : 'Rp 0';
+                    let cDewan = `Pelindung:${getSetting('dewan_pelindung','-').replace(/\n/g,', ')} | PJ:${getSetting('dewan_pj','-').replace(/\n/g,', ')} | Penasehat:${getSetting('dewan_penasehat','-').replace(/\n/g,', ')} | Pembina:${getSetting('dewan_pembina','-').replace(/\n/g,', ')}`;
+                    let cAcara = state.event.filter(e => e.status === 'aktif').map(e => `${e.nama} (Sifat:${e.sifat}, Target:Rp${fmtRp(e.target)})`).join(' || ') || 'Tidak ada acara aktif';
+                    
+                    let mentioned = [];
+                    let trigDonasi = [];
+                    let trigTalang = [];
+
+                    if (typeof state !== 'undefined' && state.anggota) {
+                        // LAPIS 3: THE DEEP-DIVE RADAR (Levenshtein Matrix)
+                        let cleanInput = text.toLowerCase().replace(/[^\w\s]/gi, '');
+                        let userWords = cleanInput.split(/\s+/).filter(w => w.length >= 3);
+
+                        const normalizePhonetic = (str) => {
+                            return str.replace(/v/g, 'f').replace(/dh/g, 'd').replace(/y/g, 'i').replace(/z/g, 's').replace(/w/g, 'u');
+                        };
+
+                        const getLevenshteinDistance = (a, b) => {
+                            if (a.length === 0) return b.length;
+                            if (b.length === 0) return a.length;
+                            let matrix = [];
+                            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+                            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+                            for (let i = 1; i <= b.length; i++) {
+                                for (let j = 1; j <= a.length; j++) {
+                                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                                        matrix[i][j] = matrix[i - 1][j - 1];
+                                    } else {
+                                        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+                                    }
+                                }
+                            }
+                            return matrix[b.length][a.length];
+                        };
+
+                        let userWordsPhonetic = userWords.map(normalizePhonetic);
+
+                        state.anggota.forEach(a => {
+                            let isMatch = false;
+                            let rawNama = String(a.nama || '').toLowerCase(); // SURGICAL FIX: Null-Reference Protection Mutlak
+                            let cleanNama = rawNama.replace(/[^\w\s]/gi, '');
+                            let namaParts = cleanNama.split(/\s+/);
+                            let namaPartsPhonetic = namaParts.map(normalizePhonetic);
+                            let fullNamaPhonetic = namaPartsPhonetic.join(' ');
+
+                            for (let i = 0; i < userWords.length; i++) {
+                                let uWord = userWords[i];
+                                let uWordP = userWordsPhonetic[i];
+
+                                if (rawNama.includes(uWord) || fullNamaPhonetic.includes(uWordP)) {
+                                    isMatch = true; break;
+                                }
+
+                                for (let j = 0; j < namaParts.length; j++) {
+                                    let nWord = namaParts[j];
+                                    if (nWord.length < 4) continue; 
+                                    if (uWord.length > 30) continue; 
+                                    
+                                    let maxDist = Math.floor(nWord.length / 4) || 1; 
+                                    if (Math.abs(uWord.length - nWord.length) > maxDist) continue;
+                                    
+                                    if (getLevenshteinDistance(uWord, nWord) <= maxDist || getLevenshteinDistance(uWordP, namaPartsPhonetic[j]) <= maxDist) {
+                                        isMatch = true; break;
+                                    }
+                                }
+                                if (isMatch) break;
+                            }
+
+                            if (isMatch) {
+                                let ar = typeof getArrearsTextData === 'function' ? getArrearsTextData(a.id) : {count:0, nominal:0};
+                                let age = "-";
+                                if(a.tgl_lahir) age = (new Date().getFullYear() - new Date(a.tgl_lahir).getFullYear()) + "thn";
+                                
+                                let pTalang = 0;
+                                state.trx.forEach(t => { if(!t.is_deleted && t.id_anggota === a.id && t.tipe === 'keluar' && t.status === 'talangan') pTalang += t.nom_awal; });
+                                
+                                mentioned.push(`${a.nama} -> Rank:${a.rank_name||'WARRIOR'}(${a.xp_total||0}XP), UtangKas:${ar.count}bln(Rp${fmtRp(ar.nominal)}), Umur:${age}, WA:${a.wa||'-'}, Bank:${a.bank_nama||'-'}(${a.bank_rek||'-'}), Label:${a.label||'-'}, Darah:${a.gol_darah||'-'}, MenalangiKas:Rp${fmtRp(pTalang)}`);
+                            }
+                        });
+
+                        // LAPIS 4: THE KEYWORD TRIGGER SYSTEM
+                        if (/(sponsor|donasi|donatur|menyumbang)/i.test(text)) {
+                            let dMap = {};
+                            state.trx.forEach(t => {
+                                if (!t.is_deleted && t.tipe === 'masuk' && (String(t.kat).toLowerCase().includes('donasi') || String(t.kat).toLowerCase().includes('sponsor'))) {
+                                    let nm = t.id_anggota ? (state.anggota.find(x=>x.id===t.id_anggota)?.nama || 'Anggota') : (t.ket.split('|')[0].replace(/.*Dari:\s*/i, '').trim());
+                                    let isBrg = String(t.ket).includes('[SPONSOR-BARANG]') || String(t.ket).includes('[DOORPRIZE]');
+                                    let wujud = isBrg ? (t.ket.split('|')[1] ? t.ket.split('|')[1].replace('Rincian:','').trim() : 'Barang') : ('Rp'+fmtRp(t.nom_final));
+                                    dMap[nm] = (dMap[nm] ? dMap[nm] + ", " : "") + wujud;
+                                }
+                            });
+                            let dArr = Object.keys(dMap).map(k => `${k} (${dMap[k]})`).slice(0, 15);
+                            if(dArr.length > 0) trigDonasi = dArr;
+                        }
+
+                        if (/(talangan|nombok|menalangi|hutang|panitia)/i.test(text)) {
+                            let tMap = {};
+                            state.trx.forEach(t => {
+                                if (!t.is_deleted && t.tipe === 'keluar' && t.status === 'talangan') {
+                                    let ag = state.anggota.find(x => x.id === t.id_anggota);
+                                    let n = ag ? ag.nama : 'Unknown';
+                                    if (!tMap[n]) tMap[n] = { nom: 0, bank: ag ? (ag.bank_nama+' '+ag.bank_rek) : '-' };
+                                    tMap[n].nom += t.nom_awal;
+                                }
+                            });
+                            let tArr = Object.keys(tMap).map(k => `${k} (Total: Rp${fmtRp(tMap[k].nom)}, Bank: ${tMap[k].bank})`);
+                            if(tArr.length > 0) trigTalang = tArr;
+                        }
+                    }
+                    
+                    let fractionalData = "Tidak Tersedia";
+                    if (typeof calculateVirtualLedger === 'function') {
+                        let v = calculateVirtualLedger();
+                        fractionalData = `Keg:Rp${fmtRp(Math.round(v.KEG))} | Sos:Rp${fmtRp(Math.round(v.SOS))} | Opr:Rp${fmtRp(Math.round(v.OPR))} | Dar:Rp${fmtRp(Math.round(v.DAR))} | Bbs:Rp${fmtRp(Math.round(v.BEBAS))}`;
+                    }
+                    
+                    // SURGICAL FIX: Payload Limit Cap (Memotong array menjadi maksimal 5 elemen untuk menghindari HTTP 413)
+                    let safeMentioned = mentioned.length > 0 ? mentioned.slice(0, 5).join(' || ') : 'Tidak Ada'; 
+                    let safeDonasi = trigDonasi.length > 0 ? trigDonasi.slice(0, 5).join(' || ') : 'Tidak di-trigger';
+                    let safeTalang = trigTalang.length > 0 ? trigTalang.slice(0, 5).join(' || ') : 'Tidak di-trigger';
+
+                    let shadowData = `\n\n[SYSTEM_DATA_RAHASIA: Role=${cRole||'Admin'}, Nama=${cName}, Profil_User=(${cPersonal}), Kas_Utama=${tKas}, Pecahan_Kas=(${fractionalData}), Dewan_Kehormatan=(${cDewan}), Acara_Aktif=(${cAcara}), Pencarian_Anggota=(${safeMentioned}), Data_Donasi=(${safeDonasi}), Data_Talangan=(${safeTalang})]`;
+                    
+                    chatContext += "User: " + text + shadowData + "\nNAVA: ";
+
+                    // [SURGICAL FIX: THE DEADLOCK BREAKER] Mengganti fetch Native tanpa Timeout dengan fetchWithTimeout
+                    let response = await fetchWithTimeout(CLOUD_API_URL.trim() + "?token=" + CLOUD_API_TOKEN + "&action=ask_ai", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ message: chatContext })
+                    }, 25000); // 25 Detik Toleransi LLM Server
+                    
+                    let textResponse = await response.text();
+                    let resData;
+                    try { 
+                        resData = JSON.parse(textResponse); 
+                    } catch (err) {
+                        resData = { status: 'error', message: textResponse.includes('<!DOCTYPE html>') ? 'Akses Server GAS Ditolak (Otorisasi/Limit).' : 'Respon Server Rusak.' };
+                    }
+                    
+                    let typingBubble = document.getElementById(typingId);
+                    if (typingBubble) typingBubble.remove();
+                    
+                    if (resData.status === 'success') {
+
+                        appendAIMessage(resData.reply, 'ai');
+                    } else {
+                        // [SURGICAL FIX: ELEGANT ERROR HANDLING & SYSTEM TOKENS]
+                        let errMsg = String(resData.message || '');
+
+                        if (errMsg.includes('UrlFetchApp') || errMsg.includes('izin') || errMsg.includes('permission')) {
+                            appendAIMessage("[SYS_WARN] **Sistem Keamanan Aktif:** Maaf, pengurus belum membuka izin akses (*Otorisasi Google*) agar saya bisa terhubung ke server utama. Mohon hubungi Bendahara untuk memperbarui izin skrip aplikasi ini.", 'ai');
+                        } else {
+                            appendAIMessage("[SYS_WARN] Maaf, saat ini saya sedang beristirahat atau mengalami kendala komunikasi dengan satelit pusat. Silakan coba beberapa saat lagi.", 'ai');
+                        }
+                    }
+                } catch (e) {
+                    let typingBubble = document.getElementById(typingId);
+                    if (typingBubble) typingBubble.remove();
+                    // [SURGICAL FIX]: Diagnosa AbortError dari fetchWithTimeout akan dilontarkan secara natural
+                    appendAIMessage("[SYS_ERR] **[DIAGNOSA KONEKSI]:** " + (e.name === 'AbortError' ? "Waktu koneksi habis (Timeout)." : e.message), 'ai');
+                }finally {
+                    isAITyping = false;
+                    document.getElementById('btn-send-ai').style.opacity = '1';
+                    
+                    // INJEKSI SURGICAL FIX: ANTI-GHOST FOCUS SHIELD
+                    setTimeout(() => {
+                        let mod = document.getElementById('mod-ai-chat');
+                        if (mod && mod.style.display !== 'none') inputEl.focus();
+                    }, 100);
+                }
+            };
+
+            function appendAIMessage(text, sender) {
+                let history = document.getElementById('ai-chat-history');
+                
+            // XSS SHIELD & SMART MARKDOWN PARSER (Translasi Bintang ke Tag HTML Aman)
+            let formattedText = esc(text)
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Tangani **Bold**
+                .replace(/(^|\n)[\*\-\•]\s+/g, '$1• ')  // PROTEKSI MUTLAK: Tangani Bullet/List murni sebelum Parser Italic bekerja
+                .replace(/\*(.*?)\*/g, '<i>$1</i>')     // Tangani *Italic*
+                .replace(/\n/g, '<br>')                 // Tangani Enter Baris
+                
+                // INJEKSI SURGICAL FIX: Post-Sanitization SVG Injection (Mengganti Token dengan SVG Murni)
+                .replace(/\[SYS_WARN\]/g, '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="3" style="vertical-align: text-bottom; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>')
+                .replace(/\[SYS_ERR\]/g, '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3" style="vertical-align: text-bottom; margin-right: 4px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>');
+            
+            // INJEKSI SURGICAL FIX: Regex Pemisah untuk First-Line Markdown Bullet agar tidak terjadi spasi kosong (Broken <br>)
+            formattedText = formattedText.replace(/^[\-\•]\s+/g, '• ').replace(/<br>[\-\•]\s+/g, '<br>• ');
+
+            let html = `<div class="msg-bubble msg-${sender}">${formattedText}</div>`;
+                history.insertAdjacentHTML('beforeend', html);
+                
+                // Muluskan pengguliran ke bawah
+                setTimeout(() => history.scrollTop = history.scrollHeight, 50);
+            }
+        </script>
 </body>
-</html>    
-  
+</html>
