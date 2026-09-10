@@ -79,7 +79,7 @@
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
 
-        html { overscroll-behavior: none !important; background: var(--bg); }
+        html { background: var(--bg); }
         body { 
             background: var(--bg); color: var(--text-main); 
             min-height: 100vh; overflow-x: hidden; overflow-y: visible; -webkit-overflow-scrolling: touch;
@@ -89,7 +89,19 @@
 
         body.modal-open { overflow: hidden; }
         .modal { /* Reset */ }
-        .modal-box { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+        
+        /* THE NATIVE PHYSICS PROTOCOL (CLEAN PURGE) */
+        .modal-box { 
+            -webkit-overflow-scrolling: touch; 
+        }
+        
+        /* Cukup gunakan min-height: 0 untuk memperbaiki masalah Flexbox Stretch */
+        .modal-box [style*="overflow-y: auto"], 
+        .modal-box [style*="overflow-y:auto"],
+        #direktori-list, #stat-detail-list, #drill-list, #peserta-list, #ai-chat-history { 
+            min-height: 0 !important; 
+            -webkit-overflow-scrolling: touch !important; 
+        }
 
         /* HARDCORE ANTI-GOOGLE SEARCH / TOUCH CALLOUT SYSTEM */
         body, .no-select, .i-cell, .btn, .nav-item, .header-btn, .trx-card, .iuran-user-head, .chip, .fab, .close-modal, .logo-wrapper, .custom-select, .option-item, .summary-card {
@@ -355,12 +367,12 @@
             document.head.appendChild(curtain);
         }
 
-        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbxrADgwDyLedqyaTx5bGzLBChBuist3LfViM7FEsakdssO5xcc6uLAz6rpVKLTGAfmf9g/exec";
+        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbwGa148RZgH7M-ZZ_sRg3JzcnXnEm3Cl2Z_xC9WiJjG4IbARLV5A2Sn4WUz0EeLhfD_/exec";
         const CLOUD_API_TOKEN = "Navasena29082026";
 
         // --- KONFIGURASI INDEXEDDB LOKAL ---
         const DB_NAME = 'NavasenaFintechDB';
-        const DB_VER = 4;
+        const DB_VER = 5;
         let idb;
 
         // --- GLOBAL MATRIX COLORS (THEME DICTIONARY) ---
@@ -382,7 +394,8 @@
             trx: [], 
             anggota: [], 
             event: [], 
-            dompet: [] 
+            dompet: [],
+            nava_memory: [] // INJEKSI JIT RAM CACHE
         };
 
         // --- VARIABEL KONTROL SESI & UI ---
@@ -621,6 +634,7 @@
                     if(!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', {keyPath: 'id'});
                     if(!db.objectStoreNames.contains('dompet')) db.createObjectStore('dompet', {keyPath: 'id'});
                     if(!db.objectStoreNames.contains('aspirasi')) db.createObjectStore('aspirasi', {keyPath: 'id'}); 
+                    if(!db.objectStoreNames.contains('nava_memory')) db.createObjectStore('nava_memory', {keyPath: 'id'}); // INJEKSI DB CACHE
                 };
                 
                 req.onsuccess = async e => {
@@ -678,6 +692,16 @@
                 const req = txDompet.objectStore('dompet').getAll(); 
                 req.onsuccess = () => resolve(req.result || []);
                 req.onerror = () => reject(req.error); 
+            });
+
+            // INJEKSI LOAD CACHE MEMORI KE RAM
+            state.nava_memory = await new Promise((resolve, reject) => {
+                try {
+                    const txMem = idb.transaction('nava_memory', 'readonly');
+                    const reqMem = txMem.objectStore('nava_memory').getAll();
+                    reqMem.onsuccess = () => resolve(reqMem.result || []);
+                    reqMem.onerror = () => resolve([]);
+                } catch(e) { resolve([]); }
             });
 
             // Fallback Dompet Kosong
@@ -1103,6 +1127,8 @@
 
             function fallbackCopy(txt, bnk) {
                 let dummy = document.createElement("textarea");
+                // THE KEYBOARD-BLOCKER PROTOCOL: Kunci elemen menjadi readonly agar OS mobile tidak memicu Virtual Keyboard
+                dummy.setAttribute("readonly", "readonly"); 
                 dummy.style.position = "fixed";
                 dummy.style.top = "-9999px";
                 dummy.style.left = "-9999px";
@@ -4742,7 +4768,7 @@
 
         <!-- MODAL DRILLDOWN KAS UTAMA (FRACTIONAL LEDGER) -->
   <div id="mod-kas-utama-drilldown" class="modal" style="z-index: 4020;">
-            <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh;">
+            <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh; overflow: hidden;">
                 <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); padding: 20px 24px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); border-radius: 24px 24px 0 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <h3 style="font-size: 18px; font-weight: 900; color: #FFFFFF; display: flex; align-items: center; gap: 8px;">Rincian Kas <span class="font-nasa" style="font-size: 1.2em; letter-spacing: 0.5px;">NAVASENA</span></h3>
@@ -4779,11 +4805,11 @@
                 let opr = Math.abs(parseInt(oprEl.value, 10)) || 0;
                 let dar = Math.abs(parseInt(darEl.value, 10)) || 0;
                 
-                // Real-time DOM Sanitizer (Menghapus tanda minus '-' atau 'e' langsung di mata user)
-                if (kegEl.value !== String(keg)) kegEl.value = keg;
-                if (sosEl.value !== String(sos)) sosEl.value = sos;
-                if (oprEl.value !== String(opr)) oprEl.value = opr;
-                if (darEl.value !== String(dar)) darEl.value = dar;
+                // Real-time DOM Sanitizer: Biarkan string kosong saat user menghapus angka agar tidak mengganggu pengetikan
+                if (kegEl.value !== "" && kegEl.value !== String(keg)) kegEl.value = keg;
+                if (sosEl.value !== "" && sosEl.value !== String(sos)) sosEl.value = sos;
+                if (oprEl.value !== "" && oprEl.value !== String(opr)) oprEl.value = opr;
+                if (darEl.value !== "" && darEl.value !== String(dar)) darEl.value = dar;
 
                 let total = keg + sos + opr + dar;
                 
@@ -5021,8 +5047,8 @@ if (tipe === 'KEG') {
                         // agar tidak terjadi kebocoran (Defisit Hantu) di antara Saldo Fisik vs Alokasi Fraksional.
 
                         let alokMatch = String(t.ket).match(/\[ALOK:([A-Z]+)\]/i);
-                        if (alokMatch && s[alokMatch[1]] !== undefined) {
-                            s[alokMatch[1]] += t.nom_final;
+                        if (alokMatch && s[alokMatch[1].toUpperCase()] !== undefined) {
+                            s[alokMatch[1].toUpperCase()] += t.nom_final;
                         } else { s.BEBAS += t.nom_final; }
                         s.TOTAL += t.nom_final;
                     }
@@ -5035,10 +5061,11 @@ if (tipe === 'KEG') {
                         
                         let amt = t.status === 'pending' ? t.nom_awal : t.nom_final;
                         let alokMatch = String(t.ket).match(/\[ALOK:([A-Z]+)\]/i);
-                        if (alokMatch && s[alokMatch[1]] !== undefined) {
-                            s[alokMatch[1]] -= amt;
+                        if (alokMatch && s[alokMatch[1].toUpperCase()] !== undefined) {
+                            s[alokMatch[1].toUpperCase()] -= amt;
                         } else { s.BEBAS -= amt; }
                         s.TOTAL -= amt;
+                    }
                     }
                 });
                 return s;
@@ -5562,6 +5589,19 @@ if (tipe === 'KEG') {
                             <div style="background: #0F172A; border: 2px solid #1E293B; border-radius: 14px; padding: 4px; margin-top: 20px; position: relative; z-index: 2; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6);" id="wrap-pin-set">
                                 <input type="password" inputmode="numeric" id="set-pin-baru" placeholder="••••••" maxlength="6" autocomplete="off" style="text-align: center; font-size: 28px; font-weight: 900; letter-spacing: 12px; padding: 16px 0; background: transparent !important; color: #38BDF8 !important; border: none !important; box-shadow: none !important; outline: none !important; width: 100%; font-family: monospace; caret-color: #38BDF8; text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);" onfocus="document.getElementById('wrap-pin-set').style.borderColor='#38BDF8'; document.getElementById('wrap-pin-set').style.boxShadow='0 0 0 3px rgba(56, 189, 248, 0.2), inset 0 4px 10px rgba(0,0,0,0.8)';" onblur="document.getElementById('wrap-pin-set').style.borderColor='#1E293B'; document.getElementById('wrap-pin-set').style.boxShadow='inset 0 4px 10px rgba(0,0,0,0.6)';">
                             </div>
+                        </div>
+
+                        <!-- TOMBOL AUDITOR MODE (AI QUALITY CONTROL) -->
+                        <div style="background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); border: 1.5px solid #DC2626; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px -5px rgba(153, 27, 27, 0.4); position: relative; overflow: hidden; margin-top: 24px;">
+                            <div style="position: absolute; right: -20px; bottom: -20px; opacity: 0.1; color: #FCA5A5; pointer-events: none;"><svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; position: relative; z-index: 2;">
+                                <div style="background: #FECACA; color: #B91C1C; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 900; color: #FFFFFF; letter-spacing: 0.5px;">NAVA AI: Auditor Mode</div>
+                                    <div style="font-size: 10px; font-weight: 700; color: #FCA5A5;">Audit otomatis database Kas & Mutasi</div>
+                                </div>
+                            </div>
+                            <button class="btn no-select" style="background: #FFFFFF; color: #991B1B; padding: 14px; font-size: 12px; font-weight: 900; width: 100%; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); position: relative; z-index: 2;" onclick="closeModal('mod-settings'); window.openAIChat(); setTimeout(()=>window.sendAIMessage('Tolong lakukan Audit Forensik pada data mutasi kas saat ini.', 'AUDIT_MODE'), 500);">LUNCURKAN AUDITOR AI</button>
                         </div>
                     </div>
                 </div>
@@ -7228,6 +7268,34 @@ if (tipe === 'KEG') {
                         req.onerror = () => r([]);
                     });
 
+                    // [BLUEPRINT BULLETPROOF] THE ANTI-DEFICIT SHADOW CALCULATION FOR SOCIAL EVENTS
+                    if (targetEvent && targetEvent.sifat === 'sosial') {
+                        let netImpactMap = {};
+                        fullTrxToDetach.forEach(dbTrx => {
+                            if (dbTrx.kat === 'Bantuan Sosial' && String(dbTrx.ket).includes('Santunan Darurat:')) {
+                                let dId = dbTrx.id_dompet || 'DP-UTAMA';
+                                netImpactMap[dId] = (netImpactMap[dId] || 0) + dbTrx.nom_final; // Penghapusan pengeluaran = Uang kembali ke dompet
+                            } else if (dbTrx.tipe === 'masuk' && dbTrx.kat === 'Pembayaran Program') {
+                                let dId = dbTrx.id_dompet || 'DP-UTAMA';
+                                netImpactMap[dId] = (netImpactMap[dId] || 0) - dbTrx.nom_final; // Penghapusan pemasukan = Uang ditarik dari dompet
+                            }
+                        });
+
+                        for (let dId of Object.keys(netImpactMap)) {
+                            if (netImpactMap[dId] < 0) {
+                                let dIn = 0, dOut = 0, dPend = 0;
+                                state.trx.filter(t => !t.is_deleted && (t.id_dompet === dId || (!t.id_dompet && dId === 'DP-UTAMA'))).forEach(t => {
+                                    if(t.tipe === 'masuk' || t.tipe === 'iuran') dIn += t.nom_final;
+                                    if(t.tipe === 'keluar') { if(t.status === 'pending') dPend += t.nom_awal; else dOut += t.nom_final; }
+                                });
+                                let currentSaldo = dIn - dOut - dPend;
+                                if (currentSaldo + netImpactMap[dId] < 0) {
+                                    return showToast(`GAGAL MEMUSNAHKAN ARSIP: Saldo Kas tidak cukup untuk menanggung penarikan bersih (Defisit Rp ${fmtRp(Math.abs(currentSaldo + netImpactMap[dId]))}).`);
+                                }
+                            }
+                        }
+                    }
+
                     let successDetachedTrx = [];
                     
                     // THE ATOMIC ANNIHILATION PROTOCOL (SINGLE TRANSACTION MUTLAK)
@@ -7805,7 +7873,7 @@ if (tipe === 'KEG') {
                 document.body.classList.remove('role-warga');
                 document.getElementById('mod-identity').style.display = 'flex';
             }
-
+            
             function verifyPhoneAuth() {
                 let rawInput = document.getElementById('auth-phone-input').value;
                 if(!rawInput) return showToast("⚠️ Masukkan nomor WhatsApp Anda.");
@@ -8609,13 +8677,13 @@ if (tipe === 'KEG') {
                                 deletedBuckets.KEG += vKeg; deletedBuckets.SOS += vSos; deletedBuckets.OPR += vOpr; deletedBuckets.DAR += vDar;
                             } else if (t.tipe === 'masuk') {
                                 let alokMatch = String(t.ket).match(/\[ALOK:([A-Z]+)\]/i);
-                                if (alokMatch && deletedBuckets[alokMatch[1]] !== undefined) deletedBuckets[alokMatch[1]] += t.nom_final;
+                                if (alokMatch && deletedBuckets[alokMatch[1].toUpperCase()] !== undefined) deletedBuckets[alokMatch[1].toUpperCase()] += t.nom_final;
                                 else deletedBuckets.BEBAS += t.nom_final;
                             } else if (t.tipe === 'keluar') {
                                 if (t.status === 'talangan') return;
                                 let amt = t.status === 'pending' ? t.nom_awal : t.nom_final;
                                 let alokMatch = String(t.ket).match(/\[ALOK:([A-Z]+)\]/i);
-                                if (alokMatch && deletedBuckets[alokMatch[1]] !== undefined) deletedBuckets[alokMatch[1]] -= amt;
+                                if (alokMatch && deletedBuckets[alokMatch[1].toUpperCase()] !== undefined) deletedBuckets[alokMatch[1].toUpperCase()] -= amt;
                                 else deletedBuckets.BEBAS -= amt;
                             }
                         });
@@ -9547,7 +9615,7 @@ if (tipe === 'KEG') {
 
             <!-- MODAL STATISTIK KEUANGAN DETAIL (WARGA) -->
             <div id="mod-statistik-detail" class="modal">
-                <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh;">
+                <div class="modal-box" style="background: var(--bg); padding: 0; display: flex; flex-direction: column; max-height: 85vh; overflow: hidden;">
                     <div style="background: var(--surface); padding: 20px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); border-radius: 24px 24px 0 0;">
                         <button class="close-modal" style="top: 16px;" onclick="closeModal('mod-statistik-detail')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         <h3 id="stat-detail-title" style="font-size: 16px; font-weight: 900; text-transform: uppercase; color: var(--primary); padding-right: 24px; line-height: 1.4; display: flex; align-items: center; gap: 8px;">RINCIAN DATA</h3>
@@ -10003,35 +10071,71 @@ if (tipe === 'KEG') {
             
             <script>
             
+                // Variabel global penyimpan tinggi layar penuh & state keyboard (Mesin Status)
+                window._navaMaxViewportHeight = window.innerHeight;
+                window._navaKeyboardState = 'CLOSED';
+
                 // THE VISUAL VIEWPORT DUAL-ANCHOR ENGINE (ANTI-HANGING MODAL)
                 window.navaAiViewportSync = function() {
                     let aiBox = document.getElementById('nava-ai-box');
                     let aiMod = document.getElementById('mod-ai-chat');
                     let historyBox = document.getElementById('ai-chat-history');
-                    if (!aiBox || aiMod.style.display === 'none') return;
+
+                    // THE GHOST SCROLL ASSASSIN KILLED: 
+                    // Blokir eksekusi mutlak jika modal AI tidak secara eksplisit terbuka!
+                    if (!aiBox || !aiMod || (aiMod.style.display !== 'flex' && aiMod.style.display !== 'block')) return;
                     
                     // MATIKAN TRANSISI CSS MUTLAK untuk mencegah efek pantulan (Bouncing)
                     aiBox.style.transition = 'none';
-                    
-                    let realHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-                    let offsetTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
-                    let windowHeight = window.innerHeight;
 
-                    // Deteksi: Apakah viewport menyusut > 150px (Indikasi mutlak Keyboard Terbuka)
-                    let isKeyboardOpen = (windowHeight - realHeight) > 150;
+                    if (window.visualViewport) {
+                        let currentVvHeight = window.visualViewport.height;
+                        let vvTop = window.visualViewport.offsetTop;
 
-                    if (isKeyboardOpen) {
-                        // STATE 1: KEYBOARD TERBUKA -> THE TOP ANCHOR (Mentok Address Bar)
-                        aiBox.style.height = realHeight + 'px';
-                        aiBox.style.top = offsetTop + 'px';
-                        aiBox.style.bottom = 'auto'; // Bebaskan dari bawah
-                        aiBox.style.borderRadius = '0';
+                        // Perbarui tinggi maksimum jika orientasi layar berubah (Rotate Screen)
+                        if (currentVvHeight > window._navaMaxViewportHeight) {
+                            window._navaMaxViewportHeight = currentVvHeight;
+                        }
+
+                        // DETEKSI FISIK MUTLAK: Hanya percaya pada penyusutan layar (Keyboard Fisik).
+                        let isKeyboardOpen = (window._navaMaxViewportHeight - currentVvHeight) > 150;
+
+                        if (isKeyboardOpen) {
+                            window._navaKeyboardState = 'OPEN'; // Kunci status menjadi Terbuka
+                            
+                            // STATE 1: KEYBOARD TERBUKA -> THE ABSOLUTE FIT ANCHOR
+                            aiBox.style.maxHeight = 'none'; // Overide batas CSS
+                            aiBox.style.height = currentVvHeight + 'px';
+                            aiBox.style.top = vvTop + 'px';
+                            aiBox.style.bottom = 'auto'; // Bebaskan dari bawah
+                            aiBox.style.borderRadius = '0';
+                        } else {
+                            // Cek apakah siklus sebelumnya keyboard berstatus terbuka
+                            let wasOpen = window._navaKeyboardState === 'OPEN';
+                            window._navaKeyboardState = 'CLOSED'; // Kunci status menjadi Tertutup
+
+                            // STATE 2: KEYBOARD TERTUTUP -> THE BOTTOM ANCHOR (Rata Bawah)
+                            aiBox.style.maxHeight = '85vh'; // Kembalikan batas CSS
+                            aiBox.style.height = '85dvh';
+                            aiBox.style.top = 'auto';     // Bebaskan dari atas
+                            aiBox.style.bottom = '0px';   // KUNCI MUTLAK KE BAWAH
+                            aiBox.style.borderRadius = '24px 24px 0 0';
+                            
+                            // SURGICAL FIX: The State Machine Tracker
+                            // Lepaskan fokus (Blur) HANYA JIKA terjadi transisi murni dari Terbuka menuju Tertutup.
+                            // Ini membiarkan kursor tetap hidup saat keyboard baru mulai merangkak naik!
+                            if (wasOpen) {
+                                let activeInput = document.activeElement;
+                                if (activeInput && activeInput.id === 'ai-chat-input') {
+                                    activeInput.blur();
+                                }
+                            }
+                        }
                     } else {
-                        // STATE 2: KEYBOARD TERTUTUP -> THE BOTTOM ANCHOR (Rata Lantai Layar)
-                        aiBox.style.height = '85dvh'; // Kembalikan ke tinggi dinamis Bottom Sheet
-                        aiBox.style.top = 'auto';     // Bebaskan ikatan dari atas
-                        aiBox.style.bottom = '0px';   // KUNCI MUTLAK KE BAWAH agar tidak ada celah menggantung
-                        aiBox.style.borderRadius = '24px 24px 0 0';
+                        // Fallback browser lawas
+                        aiBox.style.height = '85dvh';
+                        aiBox.style.top = 'auto';
+                        aiBox.style.bottom = '0px';
                     }
                     
                     // Hajar balik scroll nakal dari browser
@@ -10481,7 +10585,7 @@ if (tipe === 'KEG') {
                         return showToast(`GAGAL: Saldo ${dName} tidak cukup untuk melunasi nota (Butuh Rp ${fmtRp(deductMap[dId])})!`);
                     }
                 }
-                
+
                 openConfirm("Lunasi Semua Nota?", `Melunasi ${targetNotas.length} nota talangan sebesar Rp ${fmtRp(totalNom)}. Uang akan ditarik dari dompet asalnya masing-masing.`, "info", async () => {
                     isProcessingTransaction = true;
                     try {
@@ -12057,6 +12161,7 @@ if (tipe === 'KEG') {
                         payload.anggota = state.anggota;
                         payload.event = state.event;
                         payload.dompet = state.dompet;
+                        payload.nava_memory = state.nava_memory; // SINKRONISASI MEMORI AI KE SERVER
                         payload.settings = {
                             ticker_msg: getSetting('ticker_msg', ''),
                             iuran_nom: getSetting('iuran_nom', 10000),
@@ -12167,13 +12272,14 @@ if (tipe === 'KEG') {
                     if (data && typeof cloudTrx.length === 'number') {
                         if (state.trx.length > 10 && cloudTrx.length === 0) throw new Error("Pencegahan Kehancuran: Data awan kosong.");
                         await new Promise((resolve, reject) => {
-                            const tx = idb.transaction(['trx', 'anggota', 'event', 'dompet', 'aspirasi'], 'readwrite');
-                            tx.objectStore('trx').clear(); tx.objectStore('anggota').clear(); tx.objectStore('event').clear(); tx.objectStore('dompet').clear(); tx.objectStore('aspirasi').clear();
+                            const tx = idb.transaction(['trx', 'anggota', 'event', 'dompet', 'aspirasi', 'nava_memory'], 'readwrite');
+                            tx.objectStore('trx').clear(); tx.objectStore('anggota').clear(); tx.objectStore('event').clear(); tx.objectStore('dompet').clear(); tx.objectStore('aspirasi').clear(); tx.objectStore('nava_memory').clear();
                             cloudTrx.forEach(x => tx.objectStore('trx').put(x));
                             cloudAnggota.forEach(x => tx.objectStore('anggota').put(x));
                             if(data.event || data.evt) (data.event || data.evt).forEach(x => tx.objectStore('event').put(x));
                             if(data.dompet || data.dmp) (data.dompet || data.dmp).forEach(x => tx.objectStore('dompet').put(x));
                             if(data.aspirasi) data.aspirasi.forEach(x => tx.objectStore('aspirasi').put(x));
+                            if(data.nava_memory) data.nava_memory.forEach(x => tx.objectStore('nava_memory').put(x)); // EKSTRAKSI CACHE DARI SERVER
                             tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
                         });
 
@@ -13630,15 +13736,16 @@ if (tipe === 'KEG') {
                 let mod = document.getElementById('mod-ai-chat');
                 document.body.appendChild(mod); // Bawa ke tumpukan z-index teratas
                 
-                // [SURGICAL FIX V15]: Persiapkan layout Bottom Sheet sebelum modal tampil agar transisi mulus
-                if (window.navaAiViewportSync) window.navaAiViewportSync();
-                
+                // [SURGICAL FIX]: BUKA MODAL TERLEBIH DAHULU AGAR LOLOS DARI GATEKEEPER GHOST SCROLL
                 openModal('mod-ai-chat');
+                
+                // Persiapkan layout Bottom Sheet SETELAH modal berstatus 'flex'
+                if (window.navaAiViewportSync) window.navaAiViewportSync();
                 
                 if (!aiChatInitialized) {
                     // Smart Markdown Formatting for First Greeting
                     // INJEKSI SURGICAL FIX: Hapus Emoji untuk standar UI Enterprise
-                    let greetingText = "Halo! Saya **NAVA**, Asisten Virtual Karang Taruna NAVASENA.\n\nSilakan tanyakan apa saja terkait operasional kas, transparansi dana, pedoman XP, atau cara menggunakan Portal NAVASENA ini.";
+                    let greetingText = "Halo! Saya **NAVA** \nAsisten Virtual Karang Taruna NAVASENA.\n\nSilakan tanyakan apa saja terkait operasional kas, transparansi dana, pedoman XP, atau cara menggunakan Portal NAVASENA ini.";
                     appendAIMessage(greetingText, 'ai');
                     aiChatInitialized = true;
                 }
@@ -13647,21 +13754,714 @@ if (tipe === 'KEG') {
                 // Keyboard tidak akan lagi menyembur keluar secara otomatis. Pengguna memegang kendali penuh.
             };
 
-            window.sendAIMessage = async function() {
+            window.sendAIMessage = async function(overrideText = null, hiddenDirective = null) {
                 let inputEl = document.getElementById('ai-chat-input');
-                let text = inputEl.value.trim();
+                // TYPE COERCION SHIELD: Lindungi dari Event Object jika terpicu onclick biasa
+                let text = typeof overrideText === 'string' ? overrideText : inputEl.value.trim();
                 
                 if (!text || isAITyping) return;
-                // INJEKSI SURGICAL FIX: Hapus Emoji
                 if (!navigator.onLine) return showToast("Gagal: Koneksi internet terputus.");
 
                 inputEl.value = '';
-                inputEl.focus(); // SURGICAL FIX: Sinkronisasi Fokus Mutlak sebelum Thread terputus oleh Async Await
+                inputEl.focus(); 
                 appendAIMessage(text, 'user');
                 
                 isAITyping = true;
                 document.getElementById('btn-send-ai').style.opacity = '0.5';
+
+                // THE ZERO-TOKEN INTERCEPTOR (BYPASS GOOGLE API MURNI DI KLIEN)
+                let cleanLower = text.toLowerCase().replace(/[^\w\s]/gi, '').trim();
+                let cRoleLokal = localStorage.getItem('nav_role');
+                let cUidLokal = localStorage.getItem('nav_user_id');
+                let isAdminLokal = !cRoleLokal || cRoleLokal === 'admin' || cRoleLokal === null;
+
+                // =========================================================================
+                // THE GOD-MODE TERMINAL V8.3 (INTERACTIVE WIZARD & STATE MACHINE)
+                // =========================================================================
+                if (window._navaWizardState) {
+                    let w = window._navaWizardState;
+                    let lInput = text.toLowerCase();
+                    
+                    const endWizard = (msg) => {
+                        window._navaWizardState = null;
+                        setTimeout(() => { appendAIMessage(msg, 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400);
+                    };
+
+                    if (/^(batal|cancel|keluar|stop|salah|tidak)$/i.test(lInput)) {
+                        return endWizard("🚫 Proses dibatalkan. Memori dihapus. Ketik `/menu` jika ingin memilih perintah lain.");
+                    }
+
+                    if (w.mode === 'belajar') {
+                        if (w.step === 1) { w.data.keywords = text; w.step = 2; return endWizard(`Sip! Kata kunci **"${esc(text)}"** dikunci.\n\nSekarang, ketik **JAWABAN** yang ingin NAVA hafal untuk pertanyaan tersebut:`); }
+                        else if (w.step === 2) { w.data.answer = text; w.step = 3; return endWizard(`Siapa yang diizinkan membaca jawaban ini?\nKetik: **Semua** / **Anggota** / **Admin**`); }
+                        else if (w.step === 3) { 
+                            w.data.acl = lInput.includes('admin') ? 'ADMIN_SAJA' : (lInput.includes('anggota') ? 'ANGGOTA' : 'SEMUA'); 
+                            w.step = 4; 
+                            return endWizard(`⚠️ **KONFIRMASI MEMORI:**\n- Kata Kunci: ${w.data.keywords}\n- Akses: ${w.data.acl}\n- Jawaban: ${w.data.answer}\n\nApakah sudah benar? Ketik **"Simpan"** atau **"Batal"**.`);
+                        }
+                        else if (w.step === 4 && lInput.includes('simpan')) {
+                            let newMem = { id: genID('MEM'), tipe_data: 'SEMANTIC_CACHE', kata_kunci: w.data.keywords, payload: w.data.answer, access_level: w.data.acl, last_sync: Date.now() };
+                            saveStore('nava_memory', newMem).then(() => {
+                                state.nava_memory.push(newMem); localStorage.setItem('nav_unsynced', 'true');
+                                endWizard("✅ **MEMORI TERSIMPAN!** NAVA sudah pintar. Data akan diunggah ke satelit malam ini.");
+                            });
+                            return;
+                        }
+                    } else if (w.mode === 'tambah') {
+                        if (w.step === 1) { w.data.nama = text; w.step = 2; return endWizard(`Berapa **nomor WhatsApp** Sdr. ${esc(text)}? (Ketik '-' jika tidak ada)`); }
+                        else if (w.step === 2) { w.data.wa = text === '-' ? '' : text.replace(/\D/g, ''); w.step = 3; return endWizard(`Apa **jabatan** di Karang Taruna? (Ketik '-' jika anggota biasa)`); }
+                        else if (w.step === 3) { w.data.jabatan = text === '-' ? '' : text; w.step = 4; return endWizard(`Siapa **nama panggilan akrabnya (Alias)**? Pisahkan dengan koma. (Contoh: Baim, Ebra)`); }
+                        else if (w.step === 4) { w.data.alias = text; w.step = 5; return endWizard(`⚠️ **KONFIRMASI ANGGOTA BARU:**\n- Nama: ${w.data.nama}\n- WA: ${w.data.wa}\n- Jabatan: ${w.data.jabatan}\n- Alias: ${w.data.alias}\n\nApakah sudah benar? Ketik **"Simpan"** atau **"Batal"**.`); }
+                        else if (w.step === 5 && lInput.includes('simpan')) {
+                            let nId = genID('AG');
+                            let nAg = { id: nId, nama: w.data.nama, wa: w.data.wa, label: w.data.jabatan, tgl_lahir: '', gol_darah: '-', join_bln: new Date().getMonth()+1, join_year: new Date().getFullYear(), bank_nama: '', bank_rek: '', hist_kepatuhan_xp: 0, hist_xp_bonus: 0, badges: [] };
+                            saveStore('anggota', nAg).then(() => {
+                                state.anggota.push(nAg);
+                                let aliasMem = { id: genID('MEM'), tipe_data: 'ALIAS_DICT', kata_kunci: w.data.nama, payload: w.data.alias, access_level: 'SEMUA', last_sync: Date.now() };
+                                saveStore('nava_memory', aliasMem).then(() => { state.nava_memory.push(aliasMem); localStorage.setItem('nav_unsynced', 'true'); window.renderListAnggota(); endWizard(`✅ **EKSEKUSI BERHASIL!** Sdr. ${w.data.nama} telah resmi terdaftar di database NAVASENA.`); });
+                            });
+                            return;
+                        }
+                    } else if (w.mode === 'acara') {
+                        if (w.step === 1) { w.data.nama = text; w.step = 2; return endWizard("Berapa **Target Anggaran/Dana** acara ini? (Ketik angka saja, contoh: 500000)"); }
+                        else if (w.step === 2) { w.data.target = parseInt(text.replace(/\D/g, ''))||0; w.step = 3; return endWizard(`⚠️ **KONFIRMASI ACARA:**\n- Nama Acara: ${w.data.nama}\n- Target Dana: Rp ${fmtRp(w.data.target)}\n\nKetik **"Simpan"** atau **"Batal"**.`); }
+                        else if (w.step === 3 && lInput.includes('simpan')) {
+                            let evId = genID('EV');
+                            let nEv = { id: evId, nama: w.data.nama, target: w.data.target, status: 'aktif', id_dompet_default: 'DP-UTAMA', sifat: 'publik' };
+                            saveStore('event', nEv).then(() => { state.event.push(nEv); localStorage.setItem('nav_unsynced', 'true'); window.renderAcara(); endWizard(`✅ **BRANKAS ACARA DIBUKA!** Program ${w.data.nama} siap digunakan.`); });
+                            return;
+                        }
+                    } else if (w.mode === 'pengaturan') {
+                        if (w.step === 1) {
+                            let choice = parseInt(text.trim());
+                            if (choice === 1) { w.data.param = 'iuran_nom'; w.data.label = 'Tarif Iuran Kas'; w.step = 2; return endWizard("Tarif iuran saat ini Rp " + fmtRp(getSetting('iuran_nom', 10000)) + ".\n\nKetik **nominal baru** (Hanya angka):"); }
+                            else if (choice === 2) { w.data.param = 'alokasi'; w.data.label = 'Alokasi Pecahan Kas'; w.step = 2; return endWizard("Alokasi: Keg("+getSetting('alloc_keg',40)+"%), Sos("+getSetting('alloc_sos',30)+"%), Opr("+getSetting('alloc_opr',20)+"%), Dar("+getSetting('alloc_dar',10)+"%).\n\nKetik format baru dipisah koma *(Contoh: 50,20,20,10)*:"); }
+                            else if (choice === 3) { w.data.param = 'ticker_msg'; w.data.label = 'Pengumuman Beranda'; w.step = 2; return endWizard("Teks berjalan saat ini:\n*" + getSetting('ticker_msg', 'Kosong') + "*\n\nKetik **teks baru** (Ketik '-' untuk menghapus):"); }
+                            else if (choice === 4) { w.data.param = 'fetch_timeout'; w.data.label = 'Timeout Satelit'; w.step = 2; return endWizard("Ketik waktu toleransi jaringan dalam **milidetik** (Contoh: 180000 untuk 3 Menit):"); }
+                            else if (choice === 5) { w.data.param = 'ai_privacy_rules'; w.data.label = 'Hukum Privasi AI'; w.step = 2; return endWizard("SOP Privasi AI saat ini:\n*" + getSetting('ai_privacy_rules', 'Standar') + "*\n\nKetik **hukum/aturan privasi baru** untuk membatasi kognitif NAVA terhadap warga:"); }
+                            else { return endWizard("Pilihan tidak valid. Ketik angka **1 - 5** atau **Batal**."); }
+                        } else if (w.step === 2) {
+                            w.data.value = text; w.step = 3; return endWizard(`⚠️ **KONFIRMASI PENGATURAN:**\nAnda akan mengubah **${w.data.label}** menjadi:\n${text}\n\nKetik **"Simpan"** atau **"Batal"**.`);
+                        } else if (w.step === 3 && lInput.includes('simpan')) {
+                            if (w.data.param === 'alokasi') {
+                                let parts = w.data.value.split(',');
+                                if(parts.length >= 4) { setSetting('alloc_keg', parseInt(parts[0])||0); setSetting('alloc_sos', parseInt(parts[1])||0); setSetting('alloc_opr', parseInt(parts[2])||0); setSetting('alloc_dar', parseInt(parts[3])||0); }
+                            } else if (w.data.param === 'ticker_msg') { setSetting('ticker_msg', w.data.value === '-' ? '' : w.data.value);
+                            } else { setSetting(w.data.param, w.data.value); }
+                            localStorage.setItem('nav_unsynced', 'true');
+                            return endWizard(`✅ **SISTEM DIPERBARUI!** ${w.data.label} telah sukses diubah.`);
+                        }
+                    }
+                    return endWizard("Input tidak valid. Memori di-reset.");
+                }
+
+                if (text.startsWith('/')) {
+                    if (!isAdminLokal) {
+                        setTimeout(() => { appendAIMessage("🛑 **AKSES DITOLAK:** Mode Command Center dikunci secara eksklusif hanya untuk Otoritas Administrator / Bendahara.", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400);
+                        return;
+                    }
+                    let cmd = text.toLowerCase();
+                    if (cmd.startsWith('/cara') || cmd.startsWith('/help') || cmd.startsWith('/menu')) {
+                        setTimeout(() => { appendAIMessage("⚙️ **SYSTEM COMMAND CENTER** ⚙️\nHalo Min! Apa yang ingin Anda lakukan hari ini? Ketik salah satu perintah di bawah ini:\n\n🧠 **/belajar** -> Ajari NAVA hafalan baru (Bypass Error)\n👤 **/tambah** -> Input Anggota baru\n📅 **/acara** -> Buka brankas program/acara baru\n🔧 **/pengaturan** -> Buka Panel Konfigurasi & Privasi", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400);
+                        return;
+                    }
+                    if (cmd.startsWith('/belajar')) { window._navaWizardState = { mode: 'belajar', step: 1, data: {} }; setTimeout(() => { appendAIMessage("🧠 **Mode Belajar Aktif.**\nSilakan ketik KATA KUNCI pertanyaannya. *(Contoh: cara bayar, telat kas, denda)*", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400); return; }
+                    if (cmd.startsWith('/tambah')) { window._navaWizardState = { mode: 'tambah', step: 1, data: {} }; setTimeout(() => { appendAIMessage("👤 **Siap menambahkan anggota baru.**\nSiapa NAMA LENGKAP anggota ini?", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400); return; }
+                    if (cmd.startsWith('/acara')) { window._navaWizardState = { mode: 'acara', step: 1, data: {} }; setTimeout(() => { appendAIMessage("📅 **Siap membuat Acara.**\nSiapa NAMA ACARA/PROGRAM ini?", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400); return; }
+                    if (cmd.startsWith('/pengaturan')) { window._navaWizardState = { mode: 'pengaturan', step: 1, data: {} }; setTimeout(() => { appendAIMessage("🔧 **PENGATURAN SISTEM NAVASENA**\nKetik angka dari menu yang ingin Anda ubah:\n\n💰 **KEUANGAN & KAS**\n**[1]** Tarif Iuran Wajib Bulanan\n**[2]** Alokasi Pecahan Kas (%)\n\n⚙️ **SISTEM & KEAMANAN**\n**[3]** Teks Pengumuman Beranda (Running Text)\n**[4]** Waktu Timeout Koneksi Satelit\n**[5]** 🛡️ Aturan Privasi & Hak Akses NAVA AI", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400); return; }
+                    
+                    setTimeout(() => { appendAIMessage("Perintah tidak dikenal. Ketik **/menu** untuk melihat daftar perintah.", 'ai'); isAITyping = false; document.getElementById('btn-send-ai').style.opacity = '1'; }, 400);
+                    return;
+                }
+
+                // THE OMNI-PHONETIC & LOCAL ALIAS ENGINE V7.0 (MASTER DB)
+                const NAVA_ALIAS_DB = [
+                    { nama: "Agung Budi Santoso", ui: "Agung Budi S", alias: ["agung", "budi"] },
+                    { nama: "Aulia Miftah Khasanah", ui: "Aulia MK", alias: ["aulia", "miftah", "aul"] },
+                    { nama: "Cica Krismayanti", ui: "Cica krismayanti", alias: ["cica", "ica"] },
+                    { nama: "Deni Setiawan", ui: "Deni Setiawan", alias: ["deni", "dondeng", "gondeng"] },
+                    { nama: "Dwi Hartanto", ui: "Dwi Hartanto", alias: ["dwi"] },
+                    { nama: "Fajri Muhammad Iqbal", ui: "FM Iqbal", alias: ["fajri", "iqbal"] },
+                    { nama: "Febriana Ardianita", ui: "Febriana Ardianita", alias: ["febriana", "febri"] },
+                    { nama: "Ginanjar Wahyu Rhomadona Hadi Putro", ui: "Ginanjar WR HP", alias: ["ginanjar", "dona", "barla"] },
+                    { nama: "Heri Susanto", ui: "Heri Susanto", alias: ["heri", "klepon"] },
+                    { nama: "Intan Dyah Anggraini", ui: "Intan Dyah A", alias: ["intan", "dyah"] },
+                    { nama: "Khoirul Annam Hidayat", ui: "K Annam Hidayat", alias: ["khoirul", "annam", "anam"] },
+                    { nama: "Marganingtyas", ui: "Marganingtyas", alias: ["marga", "tyas", "ganik"] },
+                    { nama: "Mikayla Putri Adista", ui: "Mikayla Putri A", alias: ["mikayla", "putri", "kayla"] },
+                    { nama: "Muhammad Bagas Rio Ferdinan", ui: "M Bagas Rio F", alias: ["bagas", "rio", "ferdinan", "gundul"] },
+                    { nama: "Muhammad Davy Sunda Pasa", ui: "M Davy Sunda Pasa", alias: ["davy", "sunda"] },
+                    { nama: "Muhammad Faiz Ramadhani", ui: "M Faiz R", alias: ["faiz", "ramadhani", "ramadhan"] },
+                    { nama: "Muhammad Ramadhika Adi Nugroho", ui: "M Ramadhika AN", alias: ["ramadhika", "dhika", "rama"] },
+                    { nama: "Muhammad Revan Guntur Nur Cahyo", ui: "M Revan GNC", alias: ["revan", "guntur"] },
+                    { nama: "Muhammad Sholihin", ui: "M Sholihin", alias: ["sholihin", "solikin", "lemu", "boby"] },
+                    { nama: "Muhammad Syaiful Anwar", ui: "M Syaiful Anwar", alias: ["syaiful", "anwar", "ipul", "gus ipul"] },
+                    { nama: "Muhammad Syirojuddin", ui: "M Syirojuddin", alias: ["syirojuddin", "udin"] },
+                    { nama: "Nathania Az-Zahra", ui: "Nathania Az-Z", alias: ["natania", "nathan", "natan", "az-zahra", "zahra"] },
+                    { nama: "Naufal Yudhistira Gibran Alfaro", ui: "Naufal YGA", alias: ["naufal", "yudhistira", "gibran", "gendis"] },
+                    { nama: "Nesya Aulia Kasih", ui: "NA Kasih", alias: ["nesya", "kasih"] },
+                    { nama: "Nila Rizki Permatasari", ui: "Nila RP", alias: ["nila", "rizki"] },
+                    { nama: "Oktavian Krisna Saputra", ui: "O Krisna S", alias: ["oktavian", "krisna", "gareng"] },
+                    { nama: "Purwanto", ui: "Purwanto", alias: ["purwanto", "pur", "ipur", "rw"] },
+                    { nama: "Ria Nur Setianingsih", ui: "Ria Nur S", alias: ["ria", "nur"] },
+                    { nama: "Salsabila Indah Ramadhani", ui: "Salsabila IR", alias: ["salsabila", "salsa", "indah"] },
+                    { nama: "Salwa Maulidha Fatikha", ui: "Salwa MF", alias: ["salwa", "maulidha"] },
+                    { nama: "Shinta Febriana", ui: "Shinta Febriana", alias: ["shinta", "sinta"] },
+                    { nama: "Slamet Jati Nugroho", ui: "Slamet Jati N", alias: ["slamet", "jati", "jn"] },
+                    { nama: "Surono", ui: "Surono", alias: ["surono", "kucing"] },
+                    { nama: "Utama Adhi Nugraha", ui: "Utama Adhi N", alias: ["utama", "adhi", "tama", "bayan"] },
+                    { nama: "Utami", ui: "Utami", alias: ["utami"] },
+                    { nama: "Viviana Rahmawati", ui: "Viviana R", alias: ["viviana", "vivi"] },
+                    { nama: "Widya Purnamasari", ui: "Widya P", alias: ["widya", "widi"] },
+                    { nama: "Yanuar Nur Irwansyah", ui: "Yanuar Nur Irwansyah", alias: ["yanuar", "iwan", "ariel"] },
+                    { nama: "Yasir Muhammad Arif", ui: "Yasir M Arif", alias: ["yasir", "arif"] },
+                    { nama: "Zulfikar Yanuar Aji Saputra", ui: "Zulfikar YAS", alias: ["zulfikar", "yanuar", "aji", "kentur"] }
+                ];
+
+                // 1. JARING SAPAAN DASAR
+                if (/^(halo|hai|hi|pagi|siang|sore|malam|assalamualaikum|test|tes|ping|oy|uy)$/i.test(cleanLower)) {
+                    let sapaan = "";
+                    if (cleanLower.includes('assalamualaikum')) {
+                        sapaan = "Waalaikumsalam wr. wb. Halo! Ada yang bisa NAVA bantu hari ini?";
+                    } else {
+                        if (cRoleLokal === 'warga') {
+                            sapaan = "Halo Bpk/Ibu Warga RT 05! Selamat datang di Portal NAVASENA. Ada yang bisa NAVA bantu hari ini?";
+                        } else if (cRoleLokal === 'anggota') {
+                            let namaDepan = "Anggota";
+                            if (cUidLokal) {
+                                let ag = state.anggota.find(a => a.id === cUidLokal);
+                                if (ag) namaDepan = ag.nama.split(' ')[0];
+                            }
+                            sapaan = `Halo ${esc(namaDepan)}! Senang melihat Anda hari ini. Ada yang bisa NAVA bantu?`;
+                        } else {
+                            sapaan = "Halo Min! NAVA siap bertugas. Ada yang bisa NAVA bantu?";
+                        }
+                    }
+
+                    setTimeout(() => {
+                        appendAIMessage(sapaan, 'ai');
+                        isAITyping = false;
+                        document.getElementById('btn-send-ai').style.opacity = '1';
+                    }, 500); 
+                    return;
+                }
                 
+                // 2. JARING UCAPAN TERIMA KASIH (ANTI-EMOJI)
+                if (/^(terima kasih|makasih|thanks|ok|oke|sip|mantap|baik|siap|nice)$/i.test(cleanLower)) {
+                    setTimeout(() => {
+                        appendAIMessage("Sama-sama! Jangan ragu memanggil NAVA jika butuh bantuan lagi ya.", 'ai');
+                        isAITyping = false;
+                        document.getElementById('btn-send-ai').style.opacity = '1';
+                    }, 500);
+                    return;
+                }
+
+                let microDirective = ""; // Cadangan instruksi jika menembus Google API
+
+                // =========================================================================
+                // THE OMNI-SEMANTIC ROUTER V3.1 (ZERO-TOKEN LOCAL BYPASS ENGINE)
+                // =========================================================================
+                let isMatched = false;
+                let localReply = "";
+
+                // A. KATEGORI IDENTITAS ARSITEK & SISTEM (THE CREATOR MATRIX)
+                if (/(pembuat|pencipta|creator|kreator|penggagas|pencetus|perancang|developer|dev|bikin|siapa yang buat|arsitek|programmer|bapak aplikasi|ide siapa|pemrakarsa|fambarla|barla)/i.test(cleanLower)) {
+                    localReply = "**INFORMASI ARSITEK SISTEM**\n\nPortal NAVASENA dirancang, dibangun, dan dikembangkan secara eksklusif oleh **famBARLA**.\n\nLebih dari sekadar nama, entitas **BARLA** mengusung filosofi kekeluargaan dan dedikasi abadi yang mendalam:\n\n- **Fondasi Leluhur:** Merupakan akronim yang meleburkan nama kedua orang tua kandung, yakni **Berkah ginanjAR niLA**.\n- **Warisan Generasi:** Gelar kehormatan yang diwariskan secara permanen kepada putra pertama, **Ebrahim Malik BARLA**.\n\n*Karya digital ini didedikasikan sepenuhnya untuk kemajuan dan transparansi Karang Taruna NAVASENA RT 05.*";
+                    isMatched = true;
+                }
+
+                // B. KATEGORI MAKRO KEUANGAN & ORGANISASI
+                if (!isMatched) {
+                    if (/(total kas|saldo global|uang kas organisasi|sisa uang kita|saldo|sisa kas|total uang|duit kas|kekayaan|sisa dana|kas sekarang|pegangan uang)/i.test(cleanLower)) {
+                        let tKasVal = document.getElementById('dash-saldo') ? document.getElementById('dash-saldo').innerText : 'Rp 0';
+                        localReply = `Pengecekan sistem menunjukkan kekayaan bersih (saldo global) Karang Taruna NAVASENA saat ini adalah **${tKasVal}**. Angka ini merepresentasikan total uang riil yang tersedia di brankas maupun rekening.`;
+                        isMatched = true;
+                    } else if (/(pemasukan|uang masuk|dana masuk|terima uang|pendapatan|nambah kas|masukan)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let inVal = document.getElementById('dash-in-sum') ? document.getElementById('dash-in-sum').innerText : 'Rp 0';
+                        localReply = `Untuk periode berjalan di bulan ini, sistem membukukan total akumulasi dana masuk sebesar **${inVal}**.`;
+                        isMatched = true;
+                    } else if (/(pengeluaran|uang keluar|belanja|dana keluar|bayar bayar|potongan kas|biaya|habis berapa)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let outVal = document.getElementById('dash-out-sum') ? document.getElementById('dash-out-sum').innerText : 'Rp 0';
+                        localReply = `Sepanjang bulan ini, total serapan dana operasional (uang keluar) untuk pembelanjaan dan kegiatan tercatat sebesar **${outVal}**.`;
+                        isMatched = true;
+                    } else if (/(pecahan|alokasi|persenan|pembagian|jatah|porsi kas|rasio|dana sosial|dana darurat|dana operasional|dana kegiatan)/i.test(cleanLower)) {
+                        let nKeg = getSetting('alloc_keg', 40); let nSos = getSetting('alloc_sos', 30); let nOpr = getSetting('alloc_opr', 20); let nDar = getSetting('alloc_dar', 10);
+                        localReply = `Setiap uang iuran yang masuk akan dipecah secara virtual oleh sistem dengan rasio: Dana Kegiatan (${nKeg}%), Dana Sosial (${nSos}%), Dana Operasional (${nOpr}%), dan Dana Darurat (${nDar}%). Sistem ini mencegah organisasi memungut iuran mendadak berulang kali.`;
+                        isMatched = true;
+                    } else if (/(talangan|talang|nombok|utang kas|ditalangi|belum diganti|bon panitia|ganti uang|anggota nombok)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let tTalang = 0; let nTalang = [];
+                        state.trx.filter(t => !t.is_deleted && t.tipe === 'keluar' && t.status === 'talangan').forEach(t => {
+                            tTalang += t.nom_awal;
+                            let ag = state.anggota.find(a => a.id === t.id_anggota);
+                            if (ag && !nTalang.includes(ag.nama.split(' ')[0])) nTalang.push(ag.nama.split(' ')[0]);
+                        });
+                        if (tTalang > 0) {
+                            localReply = `Sistem mendeteksi bahwa Kas NAVASENA saat ini memiliki tanggungan (hutang) sebesar **Rp ${fmtRp(tTalang)}** kepada panitia/anggota yang telah menalangi kebutuhan operasional. Rincian anggota yang menalangi: ${nTalang.join(', ')}.`;
+                        } else {
+                            localReply = `Saat ini Kas NAVASENA **TIDAK MEMILIKI HUTANG** talangan kepada panitia maupun anggota. Seluruh pengeluaran acara menggunakan kas murni atau bon talangan sudah dilunasi.`;
+                        }
+                        isMatched = true;
+                    } else if (/(uang muka|dp|dana gantung|bawa uang|belum lpj|sisa modal|kas di panitia|uang acara|kas menggantung)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let tPending = 0;
+                        state.trx.filter(t => !t.is_deleted && t.tipe === 'keluar' && t.status === 'pending').forEach(t => { tPending += t.nom_awal; });
+                        if (tPending > 0) {
+                            localReply = `Berdasarkan audit Mutasi, saat ini terdapat dana sebesar **Rp ${fmtRp(tPending)}** yang masih dibawa oleh Penanggung Jawab (PJ) sebagai modal kegiatan dan belum diserahkan Laporan Pertanggungjawabannya (LPJ).`;
+                        } else {
+                            localReply = `Berdasarkan audit Mutasi, saat ini tidak ada dana yang menggantung di tangan panitia. Seluruh uang muka telah di-LPJ-kan dan sisanya sudah dikembalikan ke kas.`;
+                        }
+                        isMatched = true;
+                    } else if (/(acara|program|kegiatan|event|agenda|rencana|proker|projek|acara apa saja|program aktif|kegiatan bulan ini)/i.test(cleanLower) && !/(arsip|lalu|selesai)/i.test(cleanLower)) {
+                        let aktifEv = state.event.filter(e => e.status === 'aktif');
+                        if (aktifEv.length > 0) {
+                            let listEv = aktifEv.map((e, i) => `${i+1}. ${e.nama}`).join('\n');
+                            localReply = `Agenda Karang Taruna NAVASENA yang sedang berstatus aktif saat ini berjumlah **${aktifEv.length}** program. Di antaranya adalah:\n${listEv}`;
+                        } else {
+                            localReply = `Saat ini tidak ada program atau acara aktif yang tercatat di sistem. Semuanya sudah berstatus selesai/arsip.`;
+                        }
+                        isMatched = true;
+
+                    } else if (/(arsip|selesai|acara lalu|lpj acara|history|program kelar|riwayat acara)/i.test(cleanLower)) {
+                        let arsipEv = state.event.filter(e => e.status === 'arsip');
+                        if (arsipEv.length > 0) {
+                            let listEv = arsipEv.slice(0, 10).map((e, i) => `${i+1}. ${e.nama}`).join(', ');
+                            localReply = `Tahun ini, sistem telah mengarsipkan dan menutup buku (LPJ) untuk **${arsipEv.length}** program, di antaranya: ${listEv}.`;
+                        } else {
+                            localReply = `Sistem belum mengarsipkan program apapun di periode ini.`;
+                        }
+                        isMatched = true;
+
+                    } else if (/(pengurus|struktur|organigram|susunan|seksi|divisi)/i.test(cleanLower) && !/(dewan|pelindung|pembina|penasehat)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        // 1. MACRO: JARING PENGURUS GLOBAL V3.3 (Smart Grouping & Rank Normalizer)
+                        let jStr = String(getSetting('jabatan_list', 'Ketum NAVASENA\nSekretaris Jenderal\nBendahara Umum\nKoordinator Humas\nAdmin Medsos'));
+                        let masterArr = jStr.split(/\n|,/).map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s !== '');
+                        let pengurusHtml = [];
+                        let customLabelsMap = {};
+                        let processedIds = new Set();
+                        
+                        // Engine Pembersih Superscript & Pengekstrak Nomor Urut (Rank)
+                        const sMap = {'¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁰':'0'};
+                        const parseLbl = (txt) => {
+                            let raw = String(txt||'').replace(/\u200B/g, '').trim();
+                            let m = raw.match(/[0-9¹²³⁴⁵⁶⁷⁸⁹⁰]+$/);
+                            let rank = 0; // Jika tidak ada angka, rank 0 (Tampil paling depan sebagai Koordinator)
+                            let base = raw;
+                            if(m) {
+                                base = raw.replace(/[-\s]*[0-9¹²³⁴⁵⁶⁷⁸⁹⁰]+$/, '').trim(); // Buang angka dan spasi sisa
+                                rank = parseInt(m[0].split('').map(c => sMap[c] || c).join(''), 10);
+                            }
+                            return { base: base, lower: base.toLowerCase(), rank: rank };
+                        };
+
+                        // A. Ekstraksi Hierarki Resmi (Prioritas Atas, Sesuai Urutan di Pengaturan)
+                        masterArr.forEach(jabatan => {
+                            let mLabel = jabatan.toLowerCase();
+                            let matched = state.anggota.filter(a => a.label && parseLbl(a.label).lower === mLabel)
+                                .map(a => ({ id: a.id, nama: esc(a.nama), rank: parseLbl(a.label).rank }));
+                            
+                            if (matched.length > 0) {
+                                matched.sort((a, b) => a.rank - b.rank); // Urutkan 1, 2, 3..
+                                matched.forEach(m => processedIds.add(m.id));
+                                
+                                // LOGIKA FORMATTING ESTETIKA
+                                if (matched.length === 1) {
+                                    pengurusHtml.push(`**${esc(jabatan)}:** ${matched[0].nama}`);
+                                } else {
+                                    let subList = matched.map((m, i) => `${i + 1}. ${m.nama}`).join('\n');
+                                    pengurusHtml.push(`**${esc(jabatan)}:**\n${subList}`);
+                                }
+                            }
+                        });
+                        
+                        // B. Ekstraksi Divisi Custom / Manual (Sapu Jagat)
+                        state.anggota.forEach(a => {
+                            if (a.label && !processedIds.has(a.id)) {
+                                let p = parseLbl(a.label);
+                                if (p.lower !== '' && p.lower !== 'anggota') {
+                                    // Kelompokkan berdasarkan Base Label yang murni
+                                    if (!customLabelsMap[p.lower]) customLabelsMap[p.lower] = { display: p.base, members: [] };
+                                    customLabelsMap[p.lower].members.push({ nama: esc(a.nama), rank: p.rank });
+                                }
+                            }
+                        });
+
+                        // [SURGICAL FIX]: INTERCEPTOR WAKETUM / WAKIL KETUA
+                        // Mencegah Waketum terlempar ke dasar list akibat pengurutan abjad 'W' pada Divisi Custom.
+                        let wakilKeys = Object.keys(customLabelsMap).filter(k => /(wakil|waketum)/i.test(k));
+                        let wakilHtmlData = [];
+                        wakilKeys.sort().forEach(key => {
+                            let group = customLabelsMap[key];
+                            group.members.sort((a, b) => a.rank - b.rank);
+                            if (group.members.length === 1) {
+                                wakilHtmlData.push(`**${esc(group.display)}:** ${group.members[0].nama}`);
+                            } else {
+                                let subList = group.members.map((m, i) => `${i + 1}. ${m.nama}`).join('\n');
+                                wakilHtmlData.push(`**${esc(group.display)}:**\n${subList}`);
+                            }
+                            delete customLabelsMap[key]; // Musnahkan dari peta agar tidak diproses oleh Abjad A-Z
+                        });
+
+                        if (wakilHtmlData.length > 0) {
+                            if (pengurusHtml.length > 0) {
+                                // Cari indeks elemen Ketum/Ketua untuk menyisipkan Waketum tepat di bawahnya
+                                let targetIdx = pengurusHtml.findIndex(h => /(ketua|ketum)/i.test(h));
+                                let insertPos = targetIdx > -1 ? targetIdx + 1 : 1;
+                                pengurusHtml.splice(insertPos, 0, ...wakilHtmlData);
+                            } else {
+                                pengurusHtml.push(...wakilHtmlData);
+                            }
+                        }
+
+                        // C. Penggabungan & Pengurutan Abjad (A - Z)
+                        Object.keys(customLabelsMap).sort().forEach(key => {
+                            let group = customLabelsMap[key];
+                            group.members.sort((a, b) => a.rank - b.rank); // Urutkan anggota di dalam divisi berdasarkan pangkatnya
+                            
+                            // LOGIKA FORMATTING ESTETIKA DIVISI
+                            if (group.members.length === 1) {
+                                pengurusHtml.push(`**${esc(group.display)}:** ${group.members[0].nama}`);
+                            } else {
+                                let subList = group.members.map((m, i) => `${i + 1}. ${m.nama}`).join('\n');
+                                pengurusHtml.push(`**${esc(group.display)}:**\n${subList}`);
+                            }
+                        });
+                        if (pengurusHtml.length > 0) {
+                            // Menggunakan join('\n\n') agar ada jarak satu baris kosong antar divisi/jabatan
+                            localReply = `Berikut adalah struktur Pengurus & Divisi Karang Taruna NAVASENA saat ini:\n\n${pengurusHtml.join('\n\n')}\n\n*Informasi disajikan berdasarkan hierarki resmi dan pengelompokan abjad divisi.*`;
+                        } else {
+                            localReply = `Susunan pengurus harian atau seksi divisi belum diatur di dalam sistem direktori.`;
+                        }
+                        isMatched = true;
+                    } else if (/(ketua|ketum|wakil)/i.test(cleanLower) && !/(dewan|pelindung|pembina|penasehat)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        // 2. MICRO: JARING SPESIFIK KETUA / WAKIL
+                        let kPengembans = state.anggota.filter(a => a.label && /(ketua|ketum|wakil)/i.test(String(a.label)));
+                        if (kPengembans.length > 0) {
+                            let kList = kPengembans.map(p => `**${esc(p.nama)}** (${esc(p.label)})`).join(', ');
+                            localReply = `Posisi **KETUA / WAKIL KETUA** di Karang Taruna NAVASENA saat ini diamanahkan kepada: ${kList}.\n\n*Untuk melihat kontak atau nomor WhatsApp beliau, silakan ketik 'minta nomor wa [Nama Panggilan]'.*`;
+                        } else {
+                            localReply = `Sistem belum mencatat adanya anggota yang memegang jabatan Ketua atau Wakil Ketua saat ini.`;
+                        }
+                        isMatched = true;
+                    } else if (/(bendahara)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        // 3. MICRO: JARING SPESIFIK BENDAHARA
+                        let bPengembans = state.anggota.filter(a => a.label && /(bendahara)/i.test(String(a.label)));
+                        if (bPengembans.length > 0) {
+                            let bList = bPengembans.map(p => `**${esc(p.nama)}**`).join(' dan ');
+                            localReply = `Untuk urusan keuangan, posisi **BENDAHARA** Karang Taruna NAVASENA saat ini dipegang oleh: ${bList}.\n\n*Jika Anda memerlukan informasi rekening untuk transfer atau donasi, silakan ketik 'minta nomor rekening bendahara'.*`;
+                        } else {
+                            localReply = `Sistem belum mencatat adanya anggota yang memegang jabatan Bendahara saat ini.`;
+                        }
+                        isMatched = true;
+                    } else if (/(sekretaris|sekertaris)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        // 4. MICRO: JARING SPESIFIK SEKRETARIS
+                        let sPengembans = state.anggota.filter(a => a.label && /(sekretaris|sekertaris)/i.test(String(a.label)));
+                        if (sPengembans.length > 0) {
+                            let sList = sPengembans.map(p => `**${esc(p.nama)}**`).join(' dan ');
+                            localReply = `Posisi administrasi dan **SEKRETARIS** di Karang Taruna NAVASENA saat ini dijalankan oleh: ${sList}.`;
+                        } else {
+                            localReply = `Sistem belum mencatat adanya anggota yang memegang jabatan Sekretaris saat ini.`;
+                        }
+                        isMatched = true;
+                    } else if (/(dewan|pelindung|penasehat|pembina|struktur atas|sesepuh|tokoh|petinggi|dewan kehormatan)/i.test(cleanLower)) {
+                        let pel = getSetting('dewan_pelindung', '-').replace(/\n/g, ', ');
+                        let pj = getSetting('dewan_pj', '-').replace(/\n/g, ', ');
+                        let pen = getSetting('dewan_penasehat', '-').replace(/\n/g, ', ');
+                        let pem = getSetting('dewan_pembina', '-').replace(/\n/g, ', ');
+                        localReply = `Berikut adalah susunan struktural Dewan Kehormatan RT 05 yang tercatat di sistem:\n\n- **Pelindung:** ${pel}\n- **Penanggung Jawab:** ${pj}\n- **Penasehat:** ${pen}\n- **Pembina:** ${pem}`;
+                        isMatched = true;
+                    } else if (/(donasi uang|donasi tunai|sumbangan uang|donatur uang|infaq|amal uang|dana sukarela|total donasi)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let tDonasi = 0;
+                        state.trx.filter(t => !t.is_deleted && t.tipe === 'masuk' && String(t.kat).toLowerCase().includes('donasi')).forEach(t => tDonasi += t.nom_final);
+                        localReply = `Sistem mencatat total penerimaan donasi uang tunai secara global dari warga maupun anggota saat ini mencapai **Rp ${fmtRp(tDonasi)}**.`;
+                        isMatched = true;
+                    } else if (/(sponsor)/i.test(cleanLower) && !/(barang|natura)/i.test(cleanLower)) {
+                        let tSponsor = 0;
+                        state.trx.filter(t => !t.is_deleted && t.tipe === 'masuk' && String(t.kat).toLowerCase().includes('sponsor') && !String(t.ket).includes('[SPONSOR-BARANG]')).forEach(t => tSponsor += t.nom_final);
+                        localReply = `Total dana sponsorship tunai yang tercatat di sistem saat ini adalah **Rp ${fmtRp(tSponsor)}**.`;
+                        isMatched = true;
+                    } else if (/(barang|natura|doorprize|hadiah|wujud barang|sumbangan fisik|non tunai)/i.test(cleanLower)) {
+                        let bList = [];
+                        state.trx.filter(t => !t.is_deleted && t.tipe === 'masuk' && (String(t.ket).includes('[DOORPRIZE]') || String(t.ket).includes('[SPONSOR-BARANG]'))).forEach(t => {
+                            let nm = String(t.ket).replace(/\[.*?\]/g, '').replace(/^(Donasi|Sponsor) Dari:\s*/i, '').split('|')[0].trim();
+                            bList.push(nm);
+                        });
+                        if (bList.length > 0) {
+                            let disp = bList.slice(0, 15).join(', ');
+                            localReply = `Sumbangan berwujud barang (Natura/Door Prize) yang tercatat di sistem meliputi donasi dari: ${disp}. Total terdapat ${bList.length} sumbangan barang.`;
+                        } else {
+                            localReply = `Saat ini belum ada sumbangan berwujud barang (Natura/Door Prize) yang tercatat di sistem.`;
+                        }
+                        isMatched = true;
+                    } else if (/(peringkat|klasemen|leaderboard|tertinggi)/i.test(cleanLower)) {
+                        let sAg = [...state.anggota].sort((a,b) => (b.xp_total || 0) - (a.xp_total || 0)).slice(0, 3);
+                        if (sAg.length > 0) {
+                            let rList = sAg.map((a, i) => `${i+1}. **${a.nama.split(' ')[0]}** (${a.xp_total || 0} XP)`).join('\n');
+                            localReply = `Berikut adalah Top 3 Anggota dengan kedisiplinan (XP) tertinggi saat ini:\n\n${rList}\n\n*Leaderboard ini dihitung secara real-time berdasarkan kepatuhan iuran.*`;
+                        } else {
+                            localReply = `Data klasemen belum tersedia.`;
+                        }
+                        isMatched = true;
+                    } else if (/(ultah|ulang tahun|hari lahir)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let currM = String(new Date().getMonth() + 1).padStart(2, '0');
+                        let bdayList = [];
+                        state.anggota.forEach(a => {
+                            if (a.tgl_lahir && a.tgl_lahir.split('-')[1] === currM) bdayList.push(`${a.nama.split(' ')[0]} (${a.tgl_lahir.split('-')[2]}/${currM})`);
+                        });
+                        if (bdayList.length > 0) {
+                            localReply = `Bulan ini, anggota keluarga NAVASENA yang merayakan ulang tahun adalah: ${bdayList.join(', ')}. Mari persiapkan ucapan terbaik!`;
+                        } else {
+                            localReply = `Berdasarkan catatan direktori, tidak ada anggota yang berulang tahun pada bulan ini.`;
+                        }
+                        isMatched = true;
+                    } else if (/(peserta|pendaftar|ikut|daftar|tiket|kaos|ikutan)/i.test(cleanLower) && !/(saya|aku|ku)/i.test(cleanLower)) {
+                        let pList = [];
+                        state.trx.filter(t => !t.is_deleted && t.tipe === 'peserta').forEach(t => {
+                            let nm = String(t.ket).split('|')[0].replace('Peserta:', '').trim();
+                            let sisa = t.nom_awal - t.nom_final;
+                            let lunasTeks = sisa <= 0 ? '(LUNAS)' : '(BELUM LUNAS)';
+                            pList.push(`**${nm}** ${lunasTeks}`);
+                        });
+                        if (pList.length > 0) {
+                            localReply = `Berikut adalah daftar peserta/pendaftar program yang tercatat di sistem:\n\n- ${pList.join('\n- ')}\n\n*Untuk melihat detail rincian tagihan per acara, silakan buka menu Program.*`;
+                        } else {
+                            localReply = `Saat ini belum ada data peserta atau pendaftar program yang tercatat di dalam database.`;
+                        }
+                        isMatched = true;
+                    } else if (/(syarat|butuh|batas|milestone|poin untuk|xp untuk|naik rank|naik pangkat|pangkat)/i.test(cleanLower)) {
+                        localReply = `**Hierarki Kepangkatan (Rank) NAVASENA:**\n\n- **WARRIOR:** 0 - 150 XP\n- **ELITE:** 151 - 500 XP\n- **MASTER:** 501 - 1.200 XP\n- **GRANDMASTER:** 1.201 - 2.500 XP\n- **EPIC:** 2.501 - 4.500 XP\n- **LEGEND:** 4.501 - 7.500 XP\n- **MYTHIC:** 7.501 - 12.000 XP\n- **MYTHICAL GLORY:** > 12.000 XP\n\n*Catatan: Jika poin kedisiplinan Anda Minus (Defisit akibat penunggakan), pangkat Anda akan dibekukan menjadi AFK.*`;
+                        isMatched = true;
+                    } else if (/(slogan|motto|visi|misi|jargon|arti navasena|makna navasena)/i.test(cleanLower)) {
+                        localReply = `**NAVASENA** berasal dari bahasa Sansekerta yang memiliki arti *"Masa Depan yang Cerah"*.\n\nSlogan resmi Karang Taruna NAVASENA adalah:\n**"Bersatu - Berkarya - Berdaya"**\n\nKami berkomitmen untuk terus berinovasi, menjaga transparansi finansial, dan merajut solidaritas demi kemajuan bersama di wilayah RT 05.`;
+                        isMatched = true;
+                    }
+                }
+
+                // C. KATEGORI GRANULAR DATA SPESIFIK (MENCARI NAMA / DATA PRIBADI)
+                if (!isMatched) {
+                    let isSelfQuery = /(saya|aku|ku)$/i.test(cleanLower);
+                    let targetId = null;
+                    let targetNameText = "";
+
+                    if (isSelfQuery) {
+                        if (cRoleLokal === 'warga') {
+                            localReply = "Akses ditolak. Informasi pribadi spesifik hanya tersedia untuk Anggota yang telah login menggunakan nomor WhatsApp terdaftar. Anda saat ini menggunakan Mode Publik (Warga).";
+                            isMatched = true;
+                        } else if (!cRoleLokal || cRoleLokal === 'admin' || cRoleLokal === null) {
+                            localReply = "Anda saat ini berada dalam Mode Akses Admin. Pertanyaan kueri personal dengan kata ganti 'saya' tidak berlaku di mode ini. Mohon ketikkan nama spesifik anggota yang ingin Anda cari.";
+                            isMatched = true;
+                        } else if (cRoleLokal === 'anggota' && cUidLokal) {
+                            targetId = cUidLokal;
+                            let ag = state.anggota.find(a => a.id === cUidLokal);
+                            targetNameText = ag ? ag.nama.split(' ')[0] : 'Anda';
+                        }
+
+                    } else {
+                        // Bersihkan noise kata kerja/tanya
+                        let queryNama = cleanLower.replace(/\b(siapa|minta|berapa|berapakah|cek|cari|tolong|berikan|apa|bagaimana|nomor|no|telepon|telpon|telfon|telp|tlp|hp|wa|whatsapp|rekening|rek|bank|umur|usia|lahir|ultah|ulang tahun|darah|rhesus|golongan|gol|jabatan|sebagai apa|posisi|tugasnya|divisi|struktural|biodata|profil lengkap|identitas lengkap|poin|xp|pangkat|rank|level|peringkat|klasemen|tier|status akun|utang|tunggakan|tagihan|kurang bayar|nunggak|belum bayar|minus kas|telat bayar|lunas|sudah bayar|riwayat bayar|kelunasan|setor kas|donasi|sumbangan|nya|dong|ya|sih|min|buat|untuk)\b/gi, '').trim();
+                        
+                        if (queryNama.length >= 2) {
+                            // LAPISAN 2: PREFIX EXPANDER (Singkatan Indonesia)
+                            queryNama = queryNama.replace(/\bm\.\s*|\bm\s+|\bmuh\s+/gi, 'muhammad ')
+                                                 .replace(/\bk\.\s*|\bk\s+/gi, 'khoirul ');
+
+                            // LAPISAN 3: PHONETIC EQUALIZER
+                            const cuciFonetik = (str) => {
+                                return str.replace(/h/g, '') // Hancurkan 'H' siluman
+                                          .replace(/v|f|p/g, 'f') // Lebur V, F, P
+                                          .replace(/z|s|j/g, 's') // Lebur Z, S, J
+                                          .replace(/c|k|q/g, 'k') // Lebur C, K, Q
+                                          .replace(/(.)\1+/g, '$1'); // Lebur huruf ganda
+                            };
+
+                            let qPhonetic = cuciFonetik(queryNama);
+
+                            // Algoritma Levenshtein Dinamis (Lapis 5)
+                            const levDist = (a, b) => {
+                                if(!a.length) return b.length; if(!b.length) return a.length;
+                                let matrix = [];
+                                for(let i=0; i<=b.length; i++) matrix[i] = [i];
+                                for(let j=0; j<=a.length; j++) matrix[0][j] = j;
+                                for(let i=1; i<=b.length; i++){
+                                    for(let j=1; j<=a.length; j++){
+                                        if(b.charAt(i-1) == a.charAt(j-1)) matrix[i][j] = matrix[i-1][j-1];
+                                        else matrix[i][j] = Math.min(matrix[i-1][j-1]+1, Math.min(matrix[i][j-1]+1, matrix[i-1][j]+1));
+                                    }
+                                }
+                                return matrix[b.length][a.length];
+                            };
+
+                            let matchedTarget = null;
+                            let userWords = queryNama.split(/\s+/).filter(w => w.length >= 3);
+                            let userWordsPhonetic = qPhonetic.split(/\s+/).filter(w => w.length >= 3);
+
+                            for (let master of NAVA_ALIAS_DB) {
+                                let isMatch = false;
+
+                                // Lapis 1: Cek Alias Unik Mutlak
+                                if (master.alias.some(al => queryNama.includes(al.toLowerCase()))) {
+                                    isMatch = true;
+                                }
+
+                                // Lapis 4 & 5: Token Chunker & Levenshtein
+                                if (!isMatch) {
+                                    let dbWords = master.nama.toLowerCase().split(/\s+/);
+                                    let dbWordsPhonetic = cuciFonetik(master.nama.toLowerCase()).split(/\s+/);
+
+                                    for (let i = 0; i < userWords.length; i++) {
+                                        let uW = userWords[i]; let uWp = userWordsPhonetic[i];
+                                        for (let j = 0; j < dbWords.length; j++) {
+                                            let dW = dbWords[j]; let dWp = dbWordsPhonetic[j];
+                                            let maxMeleset = uW.length <= 3 ? 0 : (uW.length <= 6 ? 1 : 2);
+                                            
+                                            if (uW.length >= 3 && dW.length >= 3) {
+                                                if (uW === dW || uWp === dWp || dW.startsWith(uW) || dWp.startsWith(uWp)) {
+                                                    isMatch = true; break;
+                                                }
+                                                if (levDist(uW, dW) <= maxMeleset || levDist(uWp, dWp) <= maxMeleset) {
+                                                    isMatch = true; break;
+                                                }
+                                            }
+                                        }
+                                        if (isMatch) break;
+                                    }
+                                }
+
+                                if (isMatch) {
+                                    let agDb = state.anggota.find(a => String(a.nama || '').toLowerCase() === master.nama.toLowerCase() || String(a.nama || '').toLowerCase().includes(master.nama.split(' ')[0].toLowerCase()));
+                                    if (agDb) {
+                                        matchedTarget = agDb;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Fallback jika tidak ada di Master DB (Cari manual ke State)
+                            if (!matchedTarget) {
+                                let fbMatch = state.anggota.find(a => String(a.nama || '').toLowerCase().includes(queryNama));
+                                if (fbMatch) matchedTarget = fbMatch;
+                            }
+
+                            if (matchedTarget) {
+                                targetId = matchedTarget.id;
+                                targetNameText = matchedTarget.nama;
+                            }
+                        }
+                    }
+
+                    if (targetId && !isMatched) {
+
+                        let agTarget = state.anggota.find(a => a.id === targetId);
+                        
+                        if (/(umur|usia|kapan lahir|tanggal lahir|tgl lahir|kelahiran|hari jadi)/i.test(cleanLower)) {
+                            if (agTarget.tgl_lahir) {
+                                let parts = agTarget.tgl_lahir.split('-');
+                                let bn = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                                let tglFormat = `${parseInt(parts[2], 10)} ${bn[parseInt(parts[1], 10)-1]} ${parts[0]}`;
+                                let age = new Date().getFullYear() - parseInt(parts[0], 10);
+                                localReply = `Mengacu pada catatan direktori NAVASENA, **${esc(agTarget.nama)}** lahir pada tanggal **${tglFormat}**. Saat ini, beliau berusia **${age}** tahun.`;
+                            } else {
+                                localReply = `Mohon maaf, informasi mengenai tanggal lahir dan umur atas nama **${esc(agTarget.nama)}** belum dilengkapi di dalam sistem database kami.`;
+                            }
+                            isMatched = true;
+
+                        } else if (/(darah|golongan darah|gol darah|rhesus|tipe darah|donor)/i.test(cleanLower)) {
+                            if (agTarget.gol_darah && agTarget.gol_darah !== '-') {
+                                localReply = `Sistem rekam data direktori mencatat bahwa golongan darah atas nama **${esc(agTarget.nama)}** adalah **${esc(agTarget.gol_darah)}**.`;
+                            } else {
+                                localReply = `Mohon maaf, rekam data golongan darah atas nama **${esc(agTarget.nama)}** tidak ditemukan. Kami sarankan untuk menghubungi yang bersangkutan secara langsung demi akurasi informasi medis.`;
+                            }
+                            isMatched = true;
+
+                        } else if (/(jabatan|posisi|tugas|sebagai apa|panitia apa|divisi|struktural)/i.test(cleanLower)) {
+                            let jab = agTarget.label || 'Anggota Aktif';
+                            localReply = `Di dalam struktur organisasi Karang Taruna NAVASENA, **${esc(agTarget.nama)}** saat ini mengemban amanah sebagai **${esc(jab)}**.`;
+                            isMatched = true;
+
+                        } else if (/(biodata|profil lengkap|identitas lengkap)/i.test(cleanLower)) {
+                            let age = "-"; let tglLahir = "-";
+                            if(agTarget.tgl_lahir) {
+                                let parts = agTarget.tgl_lahir.split('-');
+                                let bn = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                                tglLahir = `${parseInt(parts[2], 10)} ${bn[parseInt(parts[1], 10)-1]} ${parts[0]}`;
+                                age = new Date().getFullYear() - parseInt(parts[0], 10);
+                            }
+                            localReply = `Tentu, berikut adalah profil lengkap atas nama **${esc(agTarget.nama)}** yang tercatat di sistem:\n\n- **Jabatan:** ${esc(agTarget.label || 'Anggota Aktif')}\n- **Tanggal Lahir:** ${tglLahir} (${age} Tahun)\n- **Golongan Darah:** ${esc(agTarget.gol_darah || '-')}\n\n*Informasi ini disajikan untuk keperluan koordinasi internal organisasi.*`;
+                            isMatched = true;
+
+                        } else if (/(telepon|telpon|telfon|telp|tlp|hp|wa|whatsapp|kontak|hubungi|japri)/i.test(cleanLower)) {
+                            if (agTarget.wa) {
+                                let noWaFormat = String(agTarget.wa).startsWith('62') ? '+' + agTarget.wa : agTarget.wa;
+                                localReply = `Informasi kontak atas nama **${esc(agTarget.nama)}**:\n\n- **Nomor WA:** ${noWaFormat}\n\n*Sistem Direktori NAVASENA*`;
+                            } else {
+                                localReply = `Mohon maaf, nomor telepon/WhatsApp atas nama **${esc(agTarget.nama)}** tidak tercatat di dalam sistem direktori kami.`;
+                            }
+                            isMatched = true;
+
+                        } else if (/(rekening|rek|bank|norek|no rek|transfer ke|tf kemana)/i.test(cleanLower)) {
+                            if (agTarget.bank_nama && agTarget.bank_rek) {
+                                localReply = `Data perbankan atas nama **${esc(agTarget.nama)}**:\n\n- **Bank:** ${esc(agTarget.bank_nama)}\n- **No. Rekening:** ${esc(agTarget.bank_rek)}\n\n*Sistem Direktori NAVASENA*`;
+                            } else {
+                                localReply = `Mohon maaf, informasi rekening bank atas nama **${esc(agTarget.nama)}** tidak tercatat di dalam sistem direktori kami.`;
+                            }
+                            isMatched = true;
+
+                        } else if (/(poin|xp|pangkat|rank|level|peringkat|tier)/i.test(cleanLower)) {
+                            if (isSelfQuery) {
+                                localReply = `Halo ${esc(targetNameText)}, total poin kedisiplinan yang Anda kumpulkan saat ini adalah **${agTarget.xp_total || 0} XP**, yang menempatkan status kepangkatan pada tier **${agTarget.rank_name || 'WARRIOR'}**.`;
+                            } else {
+                                localReply = `Total poin kedisiplinan yang dikumpulkan oleh **${esc(agTarget.nama)}** saat ini adalah **${agTarget.xp_total || 0} XP**, dengan status kepangkatan **${agTarget.rank_name || 'WARRIOR'}**.`;
+                            }
+                            isMatched = true;
+
+                        } else if (/(utang|tunggakan|tagihan|kurang bayar|nunggak|belum bayar|minus kas|telat bayar|iuran)/i.test(cleanLower)) {
+                            let arrearsData = typeof getArrearsTextData === 'function' ? getArrearsTextData(agTarget.id) : {count:0, nominal:0};
+                            if (isSelfQuery) {
+                                if (arrearsData.count > 0) {
+                                    localReply = `Melakukan pengecekan pada *ledger*... Saat ini Anda memiliki tagihan kas yang belum diselesaikan sebesar **Rp ${fmtRp(arrearsData.nominal)}** (untuk ${arrearsData.count} bulan). Mohon segera diselesaikan kepada Bendahara.`;
+                                } else {
+                                    localReply = `Catatan iuran Anda sangat bersih. Anda **TIDAK MEMILIKI TUNGGAKAN** sama sekali. Terima kasih atas kedisiplinan Anda.`;
+                                }
+                            } else {
+                                if (arrearsData.count > 0) {
+                                    localReply = `Melakukan pengecekan pada *ledger*... **${esc(agTarget.nama)}** memiliki tunggakan iuran kas yang belum diselesaikan sebesar **Rp ${fmtRp(arrearsData.nominal)}** (untuk ${arrearsData.count} bulan).`;
+                                } else {
+                                    localReply = `Catatan iuran **${esc(agTarget.nama)}** sangat bersih. Beliau **TIDAK MEMILIKI TUNGGAKAN** sama sekali. Terima kasih atas kedisiplinannya.`;
+                                }
+                            }
+                            isMatched = true;
+
+                        } else if (/(lunas|cek bayar|sudah bayar|riwayat bayar|kelunasan|setor kas)/i.test(cleanLower)) {
+                            let lastPay = state.trx.filter(t => !t.is_deleted && t.id_anggota === agTarget.id && t.tipe === 'iuran').sort((a,b) => b.ts - a.ts)[0];
+                            if (lastPay) {
+                                let dDate = new Date(lastPay.ts).toLocaleDateString('id-ID');
+                                let sapaanOrang = isSelfQuery ? 'Anda' : `**${esc(agTarget.nama)}**`;
+                                localReply = `Pengecekan sistem menunjukkan transaksi penyetoran kas terakhir dari ${sapaanOrang} tercatat pada tanggal **${dDate}** sebesar **Rp ${fmtRp(lastPay.nom_final)}**.`;
+                            } else {
+                                localReply = `Sistem belum mencatat adanya riwayat pembayaran iuran rutin atas nama **${esc(agTarget.nama)}**.`;
+                            }
+                            isMatched = true;
+                        } else if (/(donasi|sumbangan|donatur|sedekah|infaq|amal)/i.test(cleanLower)) {
+                            let pDonasi = 0;
+                            state.trx.forEach(t => { 
+                                if(t.is_deleted || t.id_anggota !== agTarget.id) return;
+                                if(t.tipe === 'masuk' && (String(t.kat).toLowerCase().includes('donasi') || String(t.kat).toLowerCase().includes('sponsor'))) pDonasi += t.nom_final;
+                            });
+                            let sapaanOrang = isSelfQuery ? 'Anda' : `**${esc(agTarget.nama)}**`;
+                            localReply = `Sepanjang sejarah yang tercatat di sistem, ${sapaanOrang} telah memberikan kontribusi donasi sukarela (di luar iuran wajib) sebesar total **Rp ${fmtRp(pDonasi)}**. Terima kasih atas kemurahan hatinya.`;
+                            isMatched = true;
+                        }
+                    }
+                }
+
+                // JIKA COCOK DENGAN TEMPLATE OMNI-SEMANTIC, LANGSUNG MUNTAHKAN (BYPASS API GEMINI)
+                if (isMatched && localReply !== "") {
+                    setTimeout(() => {
+                        appendAIMessage(localReply, 'ai');
+                        isAITyping = false;
+                        document.getElementById('btn-send-ai').style.opacity = '1';
+                    }, 500);
+                    return; 
+                }
+
                 // THE COGNITIVE LOAD ANIMATION (Menyisipkan Animasi Titik)
                 let typingId = 'typing-' + Date.now();
                 let history = document.getElementById('ai-chat-history');
@@ -13674,15 +14474,19 @@ if (tipe === 'KEG') {
 
                 try {
                 
-                    // THE SMART MEMORY PROTOCOL (Mengingat Konteks Percakapan)
+                    // THE SMART MEMORY PROTOCOL & PRUNING (DIET MEMORI)
                     let chatContext = "";
                     let bubbles = document.querySelectorAll('#ai-chat-history .msg-bubble');
-                    // Ambil maksimal 4 pesan terakhir agar AI ingat arah pembicaraan
                     let startIdx = Math.max(0, bubbles.length - 4); 
                     for(let i = startIdx; i < bubbles.length; i++) {
                         if(!bubbles[i].id.startsWith('typing-')) {
                             let role = bubbles[i].classList.contains('msg-user') ? "User: " : "NAVA: ";
-                            let rawText = bubbles[i].innerText.replace(/\[SYSTEM_DATA_RAHASIA.*?\]/g, '[Spoof_Blocked]'); // SURGICAL FIX: Anti Prompt Injection
+                            let rawText = bubbles[i].innerText.replace(/\[SYSTEM_DATA_RAHASIA.*?\]/g, '[Spoof_Blocked]');
+                            
+                            // TRUNCATION PROTOCOL: Potong respon AI masa lalu yang terlalu panjang (Diet Token)
+                            if (role === "NAVA: " && rawText.length > 250) {
+                                rawText = rawText.substring(0, 200) + "... [Teks dipotong sistem untuk hemat memori]";
+                            }
                             chatContext += role + rawText + "\n";
                         }
                     }
@@ -13692,6 +14496,7 @@ if (tipe === 'KEG') {
                     let cUid = localStorage.getItem('nav_user_id');
                     let cName = "Bendahara/Admin";
                     let cPersonal = "Mode Master (Tidak ada profil spesifik)";
+                    let currentLayar = typeof currView !== 'undefined' ? currView : 'Tidak diketahui';
                     
                     // LAPIS 1: THE PERFECT MIRROR
                     if (cRole === 'warga') {
@@ -13721,139 +14526,423 @@ if (tipe === 'KEG') {
                         }
                     }
 
-                    // LAPIS 2: THE GLOBAL BOARD
-                    let tKas = document.getElementById('dash-saldo') ? document.getElementById('dash-saldo').innerText : 'Rp 0';
-                    let cDewan = `Pelindung:${getSetting('dewan_pelindung','-').replace(/\n/g,', ')} | PJ:${getSetting('dewan_pj','-').replace(/\n/g,', ')} | Penasehat:${getSetting('dewan_penasehat','-').replace(/\n/g,', ')} | Pembina:${getSetting('dewan_pembina','-').replace(/\n/g,', ')}`;
-                    let cAcara = state.event.filter(e => e.status === 'aktif').map(e => `${e.nama} (Sifat:${e.sifat}, Target:Rp${fmtRp(e.target)})`).join(' || ') || 'Tidak ada acara aktif';
+                    // INJEKSI KOGNITIF: THE SEMANTIC PAYLOAD BALANCER
+                    let panduanSistem = "Tidak di-trigger";
+                    let hukumSistem = "Tidak di-trigger";
+                    let cleanSemanticInput = text.toLowerCase().replace(/[^\w\s]/gi, '');
                     
+                    if (/(cara|panduan|tombol|menu|bingung|bagaimana|bantu|dimana|letak|fungsi|lihat|kta)/i.test(cleanSemanticInput)) {
+                        if (cRole === 'warga') {
+                            panduanSistem = "Panduan UI Warga (Read-Only): Beranda(Cek Saldo Global, Analitik Arus Kas, Top Donatur). Mutasi(Lacak bukti uang masuk/keluar, Cek Talangan/Utang Kas). Iuran(Cek Kalender Hijau/Merah Kedisiplinan Pemuda. Sentuh Ikon Perisai/Pangkat di samping nama anggota untuk melihat Animasi 3D KTA Holografik mereka). Program(Cek Riwayat Arsip/LPJ lama, Cek detail Dana Acara, Cek Door Prize). Profil(Statistik Keuangan, Lapor/Kotak Suara, Keluar). Warga tidak memiliki hak untuk menambah, mengedit, atau menghapus data.";
+                        } else if (cRole === 'anggota') {
+                            panduanSistem = "Panduan UI Anggota (Read-Only): Identik dengan Warga. Iuran(Cek Kalender Hijau/Merah. Sentuh Ikon Perisai/Pangkat di samping nama anggota untuk melihat Animasi 3D KTA Holografik mereka). Tambahan di Menu Profil: Bisa cek rekam jejak pribadi (Rewind), melihat total iuran seumur hidup, dan klik KTA (Kartu Tanda Anggota). Anggota tidak bisa mengedit atau menghapus transaksi.";
+                        } else {
+                            panduanSistem = "Panduan UI Admin/Bendahara: Beranda(Cek Saldo, Kirim Laporan WA). Mutasi(Input Transaksi Baru [+], Edit Teks, Void/Hapus, Settle Uang Muka/Talangan). Iuran(Klik kotak bulan untuk lunasi instan, Tahan ikon (!) untuk info XP. Sentuh Ikon Perisai/Pangkat di samping nama anggota untuk melihat Animasi 3D KTA Holografik mereka). Program(Buat Program Baru, Cairkan PJ, Tutup LPJ Panitia, Cetak LPJ PDF, Musnahkan Arsip). Profil(Pengaturan Sistem, Ubah PIN, Manajemen Dompet Kas, Keranjang Sampah, Tutup Buku Tahunan, Factory Reset). Bendahara memegang hak eksekusi mutlak.";
+                        }
+                    }
+
+                    if (/(poin|xp|pangkat|warrior|mythic|aturan|hukum|sosial|darurat|persen|alokasi|potong|syarat|wajib|ketentuan|sanksi)/i.test(cleanSemanticInput)) {
+                        let nKeg = getSetting('alloc_keg', 40); let nSos = getSetting('alloc_sos', 30); let nOpr = getSetting('alloc_opr', 20); let nDar = getSetting('alloc_dar', 10);
+                        hukumSistem = `[HUKUM XP]: Bayar lebih awal=+75 XP, Tepat waktu=+50 XP, Telat 1bln=+25 XP, Telat 2bln=+15 XP, Nunggak/Belum Bayar=-75 XP. Hadiah Bantu Talangi Kas=+100 XP. [HUKUM DANA SOSIAL]: Santunan sakit maksimal Rp 150.000, Jeda klaim 6 bulan. Jika kas defisit, diberlakukan iuran darurat Rp 5.000/orang. Hanya untuk anggota aktif & keluarga inti. [ALOKASI IURAN]: Kegiatan=${nKeg}%, Sosial=${nSos}%, Oprasional=${nOpr}%, Darurat=${nDar}%.`;
+                    }
+
+                    // [THE JIT RAM CACHE INTERCEPTOR: SEMANTIC QNA BYPASS]
+                    let isHashDirty = localStorage.getItem('nav_unsynced') === 'true';
+                    if (!isHashDirty && state.nava_memory && state.nava_memory.length > 0) {
+                        let cachedAnswer = null;
+                        for (let mem of state.nava_memory) {
+                            if (mem.tipe_data === 'SEMANTIC_CACHE' && mem.kata_kunci) {
+                                let keywords = String(mem.kata_kunci).toLowerCase().split(',').map(k => k.trim());
+                                if (keywords.some(k => k.length > 3 && cleanSemanticInput.includes(k.replace(/[^\w\s]/gi, '')))) {
+                                    // THE DYNAMIC RBAC SHIELD (AI GOVERNANCE)
+                                    let acl = mem.access_level || 'SEMUA';
+                                    if (acl === 'ADMIN_SAJA' && !isAdminLokal) continue;
+                                    if (acl === 'ANGGOTA' && cRoleLokal === 'warga') continue;
+                                    
+                                    cachedAnswer = mem.payload;
+                                    break;
+                                }
+                            }
+                        }
+                        if (cachedAnswer) {
+                            setTimeout(() => {
+                                let typingBubble = document.getElementById(typingId);
+                                if (typingBubble) typingBubble.remove();
+                                appendAIMessage(cachedAnswer, 'ai');
+                                isAITyping = false;
+                                document.getElementById('btn-send-ai').style.opacity = '1';
+                            }, 600);
+                            return; // BYPASS LLM GEMINI MUTLAK (0 Token, 0 Latency)
+                        }
+                    }
+
+                    // LAPIS 2: THE GLOBAL BOARD (WITH JIT RAM CACHE BYPASS)
+                    let cDewan = `Pelindung:${getSetting('dewan_pelindung','-').replace(/\n/g,', ')} | PJ:${getSetting('dewan_pj','-').replace(/\n/g,', ')} | Penasehat:${getSetting('dewan_penasehat','-').replace(/\n/g,', ')} | Pembina:${getSetting('dewan_pembina','-').replace(/\n/g,', ')}`;
+                    
+                    let tKas = "Rp 0", cAcara = "", danaTerkelola = "", fractionalData = "Tidak Tersedia", strDompet = "";
+                    let precomputedHash = state.nava_memory ? state.nava_memory.find(m => m.tipe_data === 'FINANCIAL_STATE') : null;
+
+                    if (!isHashDirty && precomputedHash && precomputedHash.payload) {
+                        // SERVER-SIDE HASHING HIT (BYPASS KALKULASI LOOPING DI HP WARGA)
+                        let parsedHash = {};
+                        try { parsedHash = JSON.parse(precomputedHash.payload); } catch(e) {}
+                        tKas = parsedHash.tKas || (document.getElementById('dash-saldo') ? document.getElementById('dash-saldo').innerText : 'Rp 0');
+                        cAcara = parsedHash.cAcara || 'Tidak ada acara aktif';
+                        danaTerkelola = parsedHash.danaTerkelola || '';
+                        fractionalData = parsedHash.fractionalData || 'Tidak Tersedia';
+                        strDompet = parsedHash.strDompet || 'Tidak ada data';
+                    } else {
+                        // JIT LAZY EVALUATION (OFFLINE MUTATION TERDETEKSI ATAU HASH KOSONG, HITUNG MANUAL)
+                        tKas = document.getElementById('dash-saldo') ? document.getElementById('dash-saldo').innerText : 'Rp 0';
+                        
+                        let cAcaraArr = [];
+                        state.event.filter(e => e.status === 'aktif').forEach(e => {
+                            let eIn = 0, eOut = 0, eTalang = 0, ePj = 0;
+                            let dWarga = 0, dAnggota = 0, dSponsor = 0, dTiket = 0; 
+                            
+                            state.trx.filter(t => !t.is_deleted && t.id_event === e.id).forEach(t => {
+                                if (t.kat === 'Transfer Internal' || t.kat === 'Uang Muka Kegiatan' || t.kat === 'Sisa Uang Muka') return;
+                                if (t.tipe === 'masuk' || t.tipe === 'iuran') {
+                                    eIn += t.nom_final;
+                                    let katLow = String(t.kat || '').toLowerCase(); let ketLow = String(t.ket || '').toLowerCase();
+                                    if (katLow.includes('sponsor')) dSponsor += t.nom_final;
+                                    else if (katLow.includes('pembayaran program')) dTiket += t.nom_final;
+                                    else if (ketLow.includes('hamba allah') || ketLow.includes('anonim')) dWarga += t.nom_final;
+                                    else if (t.id_anggota) dAnggota += t.nom_final;
+                                    else if (katLow.includes('donasi')) dWarga += t.nom_final;
+                                    else dWarga += t.nom_final; 
+                                } else if (t.tipe === 'keluar') {
+                                    eOut += (t.status === 'pending' || t.status === 'talangan' ? t.nom_awal : t.nom_final);
+                                    if (t.status === 'talangan') eTalang += t.nom_awal;
+                                }
+                            });
+                            
+                            state.dompet.filter(d => d.id_event === e.id && d.is_pj && d.status === 'aktif').forEach(d => {
+                                let dIn = 0, dOut = 0;
+                                state.trx.filter(t => !t.is_deleted && t.id_dompet === d.id).forEach(t => {
+                                    if(t.tipe === 'masuk') dIn += t.nom_final;
+                                    if(t.tipe === 'keluar') { if (t.status === 'pending') dOut += t.nom_awal; else dOut += t.nom_final; }
+                                });
+                                ePj += (dIn - dOut);
+                            });
+                            let eSisa = eIn - eOut + eTalang - ePj;
+                            cAcaraArr.push(`${e.nama} [Rumus Sisa Kas = A(Masuk:Rp${fmtRp(eIn)}) - B(Keluar:Rp${fmtRp(eOut)}) + C(Talangan:Rp${fmtRp(eTalang)}) - D(DiBawaPJ:Rp${fmtRp(ePj)}) = Sisa:Rp${fmtRp(eSisa)}] [Asal Dana Masuk = Donasi Warga:Rp${fmtRp(dWarga)} | Donasi Anggota:Rp${fmtRp(dAnggota)} | Sponsor Tunai:Rp${fmtRp(dSponsor)} | Tiket Partisipasi:Rp${fmtRp(dTiket)}]`);
+                        });
+                        cAcara = cAcaraArr.join(' || ') || 'Tidak ada acara aktif';
+
+                        let tIuran = 0, tDonasi = 0, tSaldoAwal = 0, tTiket = 0;
+                        state.trx.forEach(t => {
+                            if(!t.is_deleted && (t.tipe === 'masuk' || t.tipe === 'iuran') && t.kat !== 'Transfer Internal' && t.kat !== 'Sisa Uang Muka' && !(t.ket||'').includes('Koreksi Saldo')) {
+                                if (t.tipe === 'iuran') tIuran += t.nom_final;
+                                else if (t.kat === 'Saldo Awal') tSaldoAwal += t.nom_final;
+                                else if (t.kat === 'Pembayaran Program') tTiket += t.nom_final;
+                                else tDonasi += t.nom_final;
+                            }
+                        });
+                        danaTerkelola = `Total:Rp${fmtRp(tIuran+tDonasi+tSaldoAwal+tTiket)} (IuranWajib:Rp${fmtRp(tIuran)}, TotalDonasi:Rp${fmtRp(tDonasi)}, Partisipasi:Rp${fmtRp(tTiket)}, SaldoAwal:Rp${fmtRp(tSaldoAwal)})`;
+                        
+                        if (typeof calculateVirtualLedger === 'function') {
+                            let v = calculateVirtualLedger();
+                            fractionalData = `Keg:Rp${fmtRp(Math.round(v.KEG))} | Sos:Rp${fmtRp(Math.round(v.SOS))} | Opr:Rp${fmtRp(Math.round(v.OPR))} | Dar:Rp${fmtRp(Math.round(v.DAR))} | Bbs:Rp${fmtRp(Math.round(v.BEBAS))}`;
+                        }
+
+                        let rincianDompet = [];
+                        if (typeof state !== 'undefined' && state.dompet && state.trx) {
+                            state.dompet.filter(d => d.status !== 'arsip' && !d.is_pj).forEach(d => {
+                                let dIn = 0, dOut = 0, dPend = 0;
+                                state.trx.filter(t => !t.is_deleted && (t.id_dompet === d.id || (!t.id_dompet && d.id === 'DP-UTAMA'))).forEach(t => {
+                                    if(t.tipe === 'masuk' || t.tipe === 'iuran') dIn += t.nom_final;
+                                    if(t.tipe === 'keluar') { if(t.status === 'pending') dPend += t.nom_awal; else dOut += t.nom_final; }
+                                });
+                                let sDompet = dIn - dOut - dPend;
+                                let namaD = d.id === 'DP-UTAMA' ? 'Kas Utama' : d.nama;
+                                rincianDompet.push(`${namaD}:Rp${fmtRp(sDompet)}`);
+                            });
+                        }
+                        strDompet = rincianDompet.length > 0 ? rincianDompet.join(' | ') : 'Tidak ada data';
+                    }
+
                     let mentioned = [];
                     let trigDonasi = [];
                     let trigTalang = [];
 
                     if (typeof state !== 'undefined' && state.anggota) {
-                        // LAPIS 3: THE DEEP-DIVE RADAR (Levenshtein Matrix)
+                        // LAPIS 3: THE DEEP-DIVE RADAR V7.0 (Omni-Phonetic & Alias Extractor)
                         let cleanInput = text.toLowerCase().replace(/[^\w\s]/gi, '');
+                        
+                        // Lapis 2: Dekoder Singkatan untuk Radar Multi
+                        cleanInput = cleanInput.replace(/\bm\.\s*|\bm\s+|\bmuh\s+/gi, 'muhammad ')
+                                               .replace(/\bk\.\s*|\bk\s+/gi, 'khoirul ');
+                                               
                         let userWords = cleanInput.split(/\s+/).filter(w => w.length >= 3);
 
-                        const normalizePhonetic = (str) => {
-                            return str.replace(/v/g, 'f').replace(/dh/g, 'd').replace(/y/g, 'i').replace(/z/g, 's').replace(/w/g, 'u');
+                        // Lapis 1 & 3: Pencuci Fonetik
+                        const cuciFonetikRadar = (str) => {
+                            return str.replace(/h/g, '') 
+                                      .replace(/v|f|p/g, 'f') 
+                                      .replace(/z|s|j/g, 's') 
+                                      .replace(/c|k|q/g, 'k') 
+                                      .replace(/(.)\1+/g, '$1'); 
                         };
 
-                        const getLevenshteinDistance = (a, b) => {
-                            if (a.length === 0) return b.length;
-                            if (b.length === 0) return a.length;
+                        const levDistRadar = (a, b) => {
+                            if(!a.length) return b.length; if(!b.length) return a.length;
                             let matrix = [];
-                            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-                            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-                            for (let i = 1; i <= b.length; i++) {
-                                for (let j = 1; j <= a.length; j++) {
-                                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                                        matrix[i][j] = matrix[i - 1][j - 1];
-                                    } else {
-                                        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
-                                    }
+                            for(let i=0; i<=b.length; i++) matrix[i] = [i];
+                            for(let j=0; j<=a.length; j++) matrix[0][j] = j;
+                            for(let i=1; i<=b.length; i++){
+                                for(let j=1; j<=a.length; j++){
+                                    if(b.charAt(i-1) == a.charAt(j-1)) matrix[i][j] = matrix[i-1][j-1];
+                                    else matrix[i][j] = Math.min(matrix[i-1][j-1]+1, Math.min(matrix[i][j-1]+1, matrix[i-1][j]+1));
                                 }
                             }
                             return matrix[b.length][a.length];
                         };
 
-                        let userWordsPhonetic = userWords.map(normalizePhonetic);
+                        let userWordsPhonetic = userWords.map(cuciFonetikRadar);
 
-                        state.anggota.forEach(a => {
-                            let isMatch = false;
-                            let rawNama = String(a.nama || '').toLowerCase(); // SURGICAL FIX: Null-Reference Protection Mutlak
-                            let cleanNama = rawNama.replace(/[^\w\s]/gi, '');
-                            let namaParts = cleanNama.split(/\s+/);
-                            let namaPartsPhonetic = namaParts.map(normalizePhonetic);
-                            let fullNamaPhonetic = namaPartsPhonetic.join(' ');
-
-                            for (let i = 0; i < userWords.length; i++) {
-                                let uWord = userWords[i];
-                                let uWordP = userWordsPhonetic[i];
-
-                                if (rawNama.includes(uWord) || fullNamaPhonetic.includes(uWordP)) {
-                                    isMatch = true; break;
-                                }
-
-                                for (let j = 0; j < namaParts.length; j++) {
-                                    let nWord = namaParts[j];
-                                    if (nWord.length < 4) continue; 
-                                    if (uWord.length > 30) continue; 
-                                    
-                                    let maxDist = Math.floor(nWord.length / 4) || 1; 
-                                    if (Math.abs(uWord.length - nWord.length) > maxDist) continue;
-                                    
-                                    if (getLevenshteinDistance(uWord, nWord) <= maxDist || getLevenshteinDistance(uWordP, namaPartsPhonetic[j]) <= maxDist) {
-                                        isMatch = true; break;
+                        // Ekstraksi Warga Eksternal Mutlak dari Transaksi Donasi
+                        let externalNamesMap = new Map();
+                        state.trx.forEach(t => {
+                            if (!t.is_deleted && t.tipe === 'masuk' && !t.id_anggota && (String(t.kat).toLowerCase().includes('donasi') || String(t.kat).toLowerCase().includes('sponsor'))) {
+                                let ketRaw = String(t.ket || '');
+                                let isNatura = ketRaw.includes('[SPONSOR-BARANG]') || ketRaw.includes('[DOORPRIZE]');
+                                let isAnonim = ketRaw.toLowerCase().includes('hamba allah') || ketRaw.toLowerCase().includes('anonim');
+                                if (!isAnonim && !isNatura) {
+                                    let nm = ketRaw.replace(/^(Donasi|Sponsor)\s*(Umum|Dari)?\s*[:-]?\s*/i, '').split('-')[0].trim();
+                                    if (nm && nm !== 'Warga / Umum' && nm !== 'Sponsor Umum') {
+                                        externalNamesMap.set(nm, (externalNamesMap.get(nm) || 0) + t.nom_final);
                                     }
                                 }
-                                if (isMatch) break;
+                            }
+                        });
+
+                        // Gabungkan target pencarian (Anggota via Alias DB + Warga Eksternal)
+                        let searchTargets = [];
+                        
+                        let sourceAnggota = typeof NAVA_ALIAS_DB !== 'undefined' ? NAVA_ALIAS_DB : state.anggota;
+
+                        sourceAnggota.forEach(m => {
+                            // SURGICAL FIX: The Identity Bridge Correction
+                            // Sinkronisasi mutlak: Cocokkan a.nama dengan m.nama (Master), ATAU m.ui (Singkatan UI), ATAU pemotongan kata pertama
+                            let agAsli = state.anggota.find(a => 
+                                String(a.nama || '').toLowerCase() === String(m.nama || '').toLowerCase() || 
+                                (m.ui && String(a.nama || '').toLowerCase() === String(m.ui || '').toLowerCase()) ||
+                                String(a.nama || '').toLowerCase().includes(String(m.nama || '').split(' ')[0].toLowerCase())
+                            );
+                            
+                            if (agAsli) {
+                                searchTargets.push({ type: 'anggota', data: agAsli, nama: m.nama, alias: m.alias || [] });
+                            }
+                        });
+                        externalNamesMap.forEach((total, nama) => searchTargets.push({ type: 'eksternal', data: total, nama: nama, alias: [] }));
+
+                        searchTargets.forEach(target => {
+                            let isMatch = false;
+                            
+                            if (target.alias.some(al => cleanInput.includes(al.toLowerCase()))) {
+                                isMatch = true;
+                            }
+
+                            if (!isMatch) {
+                                let dbWords = String(target.nama || '').toLowerCase().split(/\s+/);
+                                let dbWordsPhonetic = cuciFonetikRadar(String(target.nama || '').toLowerCase()).split(/\s+/);
+
+                                for (let i = 0; i < userWords.length; i++) {
+                                    let uW = userWords[i]; let uWp = userWordsPhonetic[i];
+
+                                    for (let j = 0; j < dbWords.length; j++) {
+                                        let dW = dbWords[j]; let dWp = dbWordsPhonetic[j];
+                                        if (dW.length < 3) continue;
+                                        
+                                        let maxMeleset = uW.length <= 3 ? 0 : (uW.length <= 6 ? 1 : 2);
+                                        
+                                        if (uW === dW || uWp === dWp || dW.startsWith(uW) || dWp.startsWith(uWp)) {
+                                            isMatch = true; break;
+                                        }
+                                        if (levDistRadar(uW, dW) <= maxMeleset || levDistRadar(uWp, dWp) <= maxMeleset) {
+                                            isMatch = true; break;
+                                        }
+                                    }
+                                    if (isMatch) break;
+                                }
                             }
 
                             if (isMatch) {
-                                let ar = typeof getArrearsTextData === 'function' ? getArrearsTextData(a.id) : {count:0, nominal:0};
-                                let age = "-";
-                                if(a.tgl_lahir) age = (new Date().getFullYear() - new Date(a.tgl_lahir).getFullYear()) + "thn";
-                                
-                                let pTalang = 0;
-                                state.trx.forEach(t => { if(!t.is_deleted && t.id_anggota === a.id && t.tipe === 'keluar' && t.status === 'talangan') pTalang += t.nom_awal; });
-                                
-                                mentioned.push(`${a.nama} -> Rank:${a.rank_name||'WARRIOR'}(${a.xp_total||0}XP), UtangKas:${ar.count}bln(Rp${fmtRp(ar.nominal)}), Umur:${age}, WA:${a.wa||'-'}, Bank:${a.bank_nama||'-'}(${a.bank_rek||'-'}), Label:${a.label||'-'}, Darah:${a.gol_darah||'-'}, MenalangiKas:Rp${fmtRp(pTalang)}`);
+                                if (target.type === 'anggota') {
+                                    let a = target.data;
+                                    let ar = typeof getArrearsTextData === 'function' ? getArrearsTextData(a.id) : {count:0, nominal:0};
+                                    let age = "-";
+                                    if(a.tgl_lahir) age = (new Date().getFullYear() - new Date(a.tgl_lahir).getFullYear()) + "thn";
+                                    
+                                    let pTalang = 0;
+                                    let pTalangLunas = 0;
+                                    let pDonasi = 0;
+                                    
+                                    state.trx.forEach(t => { 
+                                        if(t.is_deleted || t.id_anggota !== a.id) return;
+                                        if(t.tipe === 'keluar') {
+                                            if (t.status === 'talangan') pTalang += t.nom_awal;
+                                            else if (t.status === 'lunas' && String(t.ket).startsWith('Penyelesaian Talangan:')) pTalangLunas += t.nom_awal;
+                                        }
+                                        if(t.tipe === 'masuk' && (String(t.kat).toLowerCase().includes('donasi') || String(t.kat).toLowerCase().includes('sponsor'))) {
+                                            pDonasi += t.nom_final;
+                                        }
+                                    });
+                                    
+                                    mentioned.push(`${a.nama} -> Rank:${a.rank_name||'WARRIOR'}(${a.xp_total||0}XP), UtangKas:${ar.count}bln(Rp${fmtRp(ar.nominal)}), Umur:${age}, WA:${a.wa||'-'}, Bank:${a.bank_nama||'-'}(${a.bank_rek||'-'}), Label:${a.label||'-'}, Darah:${a.gol_darah||'-'}, SedangDitalangiAnggotaIni:Rp${fmtRp(pTalang)}, TotalPernahDitalangi:Rp${fmtRp(pTalang + pTalangLunas)}, TotalDonasi:Rp${fmtRp(pDonasi)}`);
+                                } else {
+                                    mentioned.push(`Warga Eksternal: ${target.nama} -> Total Donasi Tercatat: Rp${fmtRp(target.data)}`);
+                                }
                             }
                         });
 
                         // LAPIS 4: THE KEYWORD TRIGGER SYSTEM
                         if (/(sponsor|donasi|donatur|menyumbang)/i.test(text)) {
-                            let dMap = {};
+                            let mapAnggota = {};
+                            let mapWarga = {};
+                            let mapSponsor = {};
+                            let arrBarang = [];
+
                             state.trx.forEach(t => {
                                 if (!t.is_deleted && t.tipe === 'masuk' && (String(t.kat).toLowerCase().includes('donasi') || String(t.kat).toLowerCase().includes('sponsor'))) {
-                                    let nm = t.id_anggota ? (state.anggota.find(x=>x.id===t.id_anggota)?.nama || 'Anggota') : (t.ket.split('|')[0].replace(/.*Dari:\s*/i, '').trim());
-                                    let isBrg = String(t.ket).includes('[SPONSOR-BARANG]') || String(t.ket).includes('[DOORPRIZE]');
-                                    let wujud = isBrg ? (t.ket.split('|')[1] ? t.ket.split('|')[1].replace('Rincian:','').trim() : 'Barang') : ('Rp'+fmtRp(t.nom_final));
-                                    dMap[nm] = (dMap[nm] ? dMap[nm] + ", " : "") + wujud;
+                                    
+                                    let ketRaw = String(t.ket || '');
+                                    let isSponsor = String(t.kat).toLowerCase().includes('sponsor');
+                                    let isNatura = ketRaw.includes('[SPONSOR-BARANG]') || ketRaw.includes('[DOORPRIZE]');
+                                    let isAnonim = ketRaw.toLowerCase().includes('hamba allah') || ketRaw.toLowerCase().includes('anonim');
+
+                                    if (isNatura) {
+                                        let rawBarangInfo = ketRaw.replace(/\[DOORPRIZE\]\s*/i, '').replace(/\[SPONSOR-BARANG\]\s*/i, '').replace(/^(Donasi|Sponsor)\s*(Dari)?\s*[:-]?\s*/i, '');
+                                        let namaBarang = rawBarangInfo.split('|')[0].trim();
+                                        let rincianBarang = rawBarangInfo.includes('|') ? rawBarangInfo.split('|')[1].replace('Rincian:', '').trim() : '-';
+                                        arrBarang.push(`${namaBarang} (${rincianBarang})`);
+                                    } else if (isSponsor) {
+                                        let nm = ketRaw.replace(/^Sponsor\s*(Dari)?\s*[:-]?\s*/i, '').split('-')[0].trim() || "Sponsor Umum";
+                                        mapSponsor[nm] = (mapSponsor[nm] || 0) + t.nom_final;
+                                    } else if (isAnonim) {
+                                        mapWarga["Hamba Allah (Anonim)"] = (mapWarga["Hamba Allah (Anonim)"] || 0) + t.nom_final;
+                                    } else if (t.id_anggota) {
+                                        let ag = state.anggota.find(a => a.id === t.id_anggota);
+                                        let nm = ag ? ag.nama : ketRaw.replace(/^(Donasi|Sponsor)\s*(Umum|Dari)?\s*[:-]?\s*/i, '').split('|')[0].split('-')[0].trim() || "Anggota";
+                                        mapAnggota[nm] = (mapAnggota[nm] || 0) + t.nom_final;
+                                    } else {
+                                        let nm = ketRaw.replace(/^Donasi\s*(Umum|Dari)?\s*[:-]?\s*/i, '').split('-')[0].trim() || "Warga / Umum";
+                                        mapWarga[nm] = (mapWarga[nm] || 0) + t.nom_final;
+                                    }
                                 }
                             });
-                            let dArr = Object.keys(dMap).map(k => `${k} (${dMap[k]})`).slice(0, 15);
+
+                            let sortMap = (map) => Object.keys(map).map(k => ({nama: k, total: map[k]})).sort((a,b) => b.total - a.total).slice(0, 100).map((x, i) => `${i+1}. ${x.nama} (Rp${fmtRp(x.total)})`);
+                            
+                            let topSponsor = sortMap(mapSponsor);
+                            let topAnggota = sortMap(mapAnggota);
+                            let topWarga = sortMap(mapWarga);
+
+                            let dArr = [];
+                            if (topSponsor.length > 0) dArr.push(`[DAFTAR SPONSOR TUNAI] ${topSponsor.join(', ')}`);
+                            if (topWarga.length > 0) dArr.push(`[DAFTAR DONASI WARGA EKSTERNAL] ${topWarga.join(', ')}`);
+                            if (topAnggota.length > 0) dArr.push(`[DAFTAR DONASI ANGGOTA] ${topAnggota.join(', ')}`);
+                            if (arrBarang.length > 0) dArr.push(`[SUMBANGAN BARANG] ${arrBarang.slice(0,50).join(' || ')}`);
+
                             if(dArr.length > 0) trigDonasi = dArr;
                         }
 
                         if (/(talangan|nombok|menalangi|hutang|panitia)/i.test(text)) {
-                            let tMap = {};
-                            state.trx.forEach(t => {
-                                if (!t.is_deleted && t.tipe === 'keluar' && t.status === 'talangan') {
-                                    let ag = state.anggota.find(x => x.id === t.id_anggota);
-                                    let n = ag ? ag.nama : 'Unknown';
-                                    if (!tMap[n]) tMap[n] = { nom: 0, bank: ag ? (ag.bank_nama+' '+ag.bank_rek) : '-' };
-                                    tMap[n].nom += t.nom_awal;
+                            let mapBelum = {};
+                            let mapLunas = {};
+                            
+                            let sortedTrx = [...state.trx].filter(t => !t.is_deleted && t.tipe === 'keluar').sort((a,b) => b.ts - a.ts);
+                            
+                            sortedTrx.forEach(t => {
+                                let ag = state.anggota.find(x => x.id === t.id_anggota);
+                                let n = ag ? ag.nama : 'Unknown';
+                                
+                                if (t.status === 'talangan') {
+                                    if (!mapBelum[n]) mapBelum[n] = { nom: 0, bank: ag ? (ag.bank_nama+' '+ag.bank_rek) : '-' };
+                                    mapBelum[n].nom += t.nom_awal;
+                                } else if (t.status === 'lunas' && String(t.ket).startsWith('Penyelesaian Talangan:')) {
+                                    if (!mapLunas[n]) mapLunas[n] = [];
+                                    if (mapLunas[n].length < 50) {
+                                        let cleanKet = String(t.ket).replace(/^Penyelesaian Talangan:\s*/i, '').replace(/\[.*?\]/g, '').trim();
+                                        mapLunas[n].push(`${cleanKet} (Rp${fmtRp(t.nom_awal)})`);
+                                    }
                                 }
                             });
-                            let tArr = Object.keys(tMap).map(k => `${k} (Total: Rp${fmtRp(tMap[k].nom)}, Bank: ${tMap[k].bank})`);
+                            
+                            let tArr = [];
+                            Object.keys(mapBelum).forEach(k => tArr.push(`[BLM LUNAS] ${k} (Total: Rp${fmtRp(mapBelum[k].nom)}, Bank: ${mapBelum[k].bank})`));
+                            Object.keys(mapLunas).forEach(k => tArr.push(`[SDH DIGANTI] ${k}: ${mapLunas[k].join(', ')}`));
+                            
                             if(tArr.length > 0) trigTalang = tArr;
                         }
                     }
                     
-                    let fractionalData = "Tidak Tersedia";
-                    if (typeof calculateVirtualLedger === 'function') {
-                        let v = calculateVirtualLedger();
-                        fractionalData = `Keg:Rp${fmtRp(Math.round(v.KEG))} | Sos:Rp${fmtRp(Math.round(v.SOS))} | Opr:Rp${fmtRp(Math.round(v.OPR))} | Dar:Rp${fmtRp(Math.round(v.DAR))} | Bbs:Rp${fmtRp(Math.round(v.BEBAS))}`;
-                    }
-                    
-                    // SURGICAL FIX: Payload Limit Cap (Memotong array menjadi maksimal 5 elemen untuk menghindari HTTP 413)
                     let safeMentioned = mentioned.length > 0 ? mentioned.slice(0, 5).join(' || ') : 'Tidak Ada'; 
-                    let safeDonasi = trigDonasi.length > 0 ? trigDonasi.slice(0, 5).join(' || ') : 'Tidak di-trigger';
+                    let safeDonasi = trigDonasi.length > 0 ? trigDonasi.slice(0, 10).join(' || ') : 'Tidak di-trigger';
                     let safeTalang = trigTalang.length > 0 ? trigTalang.slice(0, 5).join(' || ') : 'Tidak di-trigger';
 
-                    let shadowData = `\n\n[SYSTEM_DATA_RAHASIA: Role=${cRole||'Admin'}, Nama=${cName}, Profil_User=(${cPersonal}), Kas_Utama=${tKas}, Pecahan_Kas=(${fractionalData}), Dewan_Kehormatan=(${cDewan}), Acara_Aktif=(${cAcara}), Pencarian_Anggota=(${safeMentioned}), Data_Donasi=(${safeDonasi}), Data_Talangan=(${safeTalang})]`;
-                    
-                    chatContext += "User: " + text + shadowData + "\nNAVA: ";
+                    // [BLUEPRINT V2.1]: APP HEALTH PAYLOAD (DIAGNOSTIC DATA KHUSUS ADMIN)
+                    let appHealth = "Tidak_Tersedia";
+                    if (cRole !== 'warga' && cRole !== 'anggota') {
+                        let isDesync = localStorage.getItem('nav_unsynced') === 'true';
+                        let isNetOnline = navigator.onLine;
+                        appHealth = `Online=${isNetOnline}, Data_Unsynced=${isDesync}`;
+                    }
 
-                    // [SURGICAL FIX: COGNITIVE TOLERANCE EXTENSION] 
-                    // Memperlebar pipa kesabaran Klien menjadi 60 Detik untuk menampung latensi 'Cold Start' Gemini 3.6
+                    // --- [FITUR 2: DYNAMIC CONTEXT PRUNING (DIET PAYLOAD)] ---
+                    let s_tKas = tKas, s_strDompet = strDompet, s_danaTerkelola = danaTerkelola, s_fractionalData = fractionalData;
+                    let s_cDewan = cDewan, s_cAcara = cAcara, s_safeMentioned = safeMentioned, s_safeDonasi = safeDonasi, s_safeTalang = safeTalang;
+                    
+                    if (hiddenDirective !== 'AUDIT_MODE') {
+                        let isFocusAnggota = /(siapa|anggota|warga|nama|xp|poin|pangkat|umur|lahir|nomor|wa|rekening|kontak)/i.test(cleanSemanticInput);
+                        let isFocusAcara = /(acara|program|event|kegiatan|17|lpj|doorprize|tiket)/i.test(cleanSemanticInput);
+                        let isFocusKas = /(saldo|kas|uang|sisa|darurat|sosial|operasional|talangan|nombok|donasi|sponsor)/i.test(cleanSemanticInput);
+                        
+                        // Menghapus string berat (Matrix Arrays) jika intent pengguna sama sekali tidak terkait
+                        if (isFocusAnggota && !isFocusAcara && !isFocusKas) { s_cAcara = "-"; s_safeDonasi = "-"; s_safeTalang = "-"; s_strDompet = "-"; }
+                        if (isFocusAcara && !isFocusAnggota && !isFocusKas) { s_safeMentioned = "-"; s_cDewan = "-"; s_fractionalData = "-"; }
+                        if (isFocusKas && !isFocusAcara && !isFocusAnggota) { s_cAcara = "-"; s_safeMentioned = "-"; s_cDewan = "-"; }
+                    }
+
+                    // --- [FITUR 4: THE AUDITOR MODE INJECTION] ---
+                    if (hiddenDirective === 'AUDIT_MODE') {
+                        // Ekstraksi murni 150 transaksi aktif terakhir untuk dianalisa LLM, buang kolom bertele-tele
+                        let rawAuditData = state.trx.filter(t => !t.is_deleted).slice(0, 150).map(t => `ID:${t.id}|Tipe:${t.tipe}|Nom:${t.nom_final}|Status:${t.status}|Ket:${esc(t.ket).substring(0, 40)}`).join('\n');
+                        microDirective += `\n\n[DIREKTIF_AUDITOR: Anda beralih ke Mode Auditor Forensik. Analisis matriks data berikut:\n<BEGIN_DATA>\n${rawAuditData}\n<END_DATA>\n\nTUGAS ANDA: Cari anomali (1. Status pending/uang muka yang masih menggantung. 2. Talangan yang belum dilunasi. 3. Duplikasi aneh/double-entry berulang dengan nominal yang sama). Jawab langsung dengan daftar temuan error/peringatan secara tegas dan profesional!]`;
+                    }
+
+                    // EKSTRAKSI STATISTIK GLOBAL (THE HYDRATION PROTOCOL UNTUK MENCEGAH DATA STARVATION)
+                    let totalAnggota = state.anggota ? state.anggota.length : 0;
+                    let totalProgram = state.event ? state.event.length : 0;
+                    let totalProgramSelesai = state.event ? state.event.filter(e => e.status === 'arsip').length : 0;
+                    let totalDompet = state.dompet ? state.dompet.filter(d => d.status !== 'arsip').length : 0;
+                    let statistikGlobal = `Total_Anggota_Terdaftar:${totalAnggota} orang | Total_Program_Acara:${totalProgram} (${totalProgramSelesai} Selesai/Arsip) | Total_Dompet_Kas_Aktif:${totalDompet}`;
+
+                    // THE MASTER PAYLOAD INJECTION (Menyatukan Rumus, Rincian, Distribusi Kas, Aturan Sistem, dan Posisi Layar)
+                    let shadowData = `\n\n[SYSTEM_DATA_RAHASIA: LayarAktif=${currentLayar}, Role=${cRole||'Admin'}, Nama=${cName}, Profil_User=(${cPersonal}), Saldo_Global=${s_tKas}, Distribusi_Dompet=(${s_strDompet}), Rincian_Dana_Terkelola=(${s_danaTerkelola}), Pecahan_KasUtama=(${s_fractionalData}), Dewan_Kehormatan=(${s_cDewan}), Acara_Aktif=(${s_cAcara}), Statistik_Global=(${statistikGlobal}), Pencarian_Anggota=(${s_safeMentioned}), Data_Donasi=(${s_safeDonasi}), Data_Talangan=(${s_safeTalang}), PanduanAplikasi=(${panduanSistem}), HukumAturan=(${hukumSistem}), StatusAplikasi=(${appHealth})]`;
+
+                    // THE DUAL-LAYER FIREWALL & DOMAIN RESTRICTION INJECTION (PELINDUNG RAHASIA DAPUR)
+                    let aiPrivacyRules = getSetting('ai_privacy_rules', 'Standar.');
+                    
+                    let roleFirewall = (cRole === 'warga' || cRole === 'anggota') 
+                        ? "FIREWALL AKTIF: User adalah Warga/Anggota (Read-Only). JANGAN berikan rahasia dapur aplikasi (kode, database, API, logika internal). Jawab seputar UI dan transparansi kas saja. Jika ditanya cara kerja sistem, tolak dengan profesional.\n[DIREKTIF_HUKUM_ADMIN]: " + aiPrivacyRules
+                        : "GOD-MODE AKTIF: User adalah Admin. Anda adalah Co-Pilot Aplikasi. Berikan otoritas penuh untuk membahas arsitektur, forensik audit, dan tata kelola teknis mendalam dari ujung rambut hingga kaki.";
+                    
+                    let domainLock = `\n\n[DIREKTIF_MUTLAK: 1. Otoritas penuh Anda HANYA untuk Portal NAVASENA RT 05. 2. JIKA DITANYA DI LUAR TOPIK NAVASENA (Misal: resep, sejarah umum, tokoh dunia, coding di luar app, cuaca), WAJIB TOLAK DENGAN TEMPLATE BAKU INI: 'Mohon maaf, sebagai Asisten Virtual Finansial NAVASENA, wewenang dan fokus operasional saya dibatasi secara eksklusif pada tata kelola kas, transparansi organisasi, dan operasional Portal NAVASENA RT 05. Saya tidak dapat memproses permintaan informasi di luar ruang lingkup tersebut.' 3. ANTI-EMOJI MUTLAK, gunakan Bold/Italic saja. 4. ${roleFirewall}]`;
+
+                    chatContext += "User: " + text + microDirective + shadowData + domainLock + "\nNAVA: ";
+
+                    // [SURGICAL FIX: EXTREME COGNITIVE TOLERANCE EXTENSION] 
+                    // Memperlebar pipa kesabaran Klien menjadi 120 Detik (2 Menit) mutlak, atau sesuai Custom Timeout Admin.
+                    // Menampung latensi 'Cold Start' Gemini, antrean High Demand server Google, dan proses berpikir kompleks.
+                    let customTimeout = parseInt(getSetting('fetch_timeout', 120000), 10) || 120000;
+                    
                     let response = await fetchWithTimeout(CLOUD_API_URL.trim() + "?token=" + CLOUD_API_TOKEN + "&action=ask_ai", {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({ message: chatContext })
-                    }, 60000); // 60 Detik Toleransi Kognitif LLM
+                    }, 120000); // 120.000 ms Toleransi Kognitif LLM Mutlak
                     
                     let textResponse = await response.text();
                     let resData;
@@ -13870,16 +14959,27 @@ if (tipe === 'KEG') {
 
                         appendAIMessage(resData.reply, 'ai');
                     } else {
-                        // [SURGICAL FIX: TRANSPARENT ERROR LOGGING (ANTI-MASKING PROTOCOL)]
+                        // [SURGICAL FIX: THE ERROR SANITIZER PROTOCOL (ANTI-GARBAGE EXPOSURE)]
                         let errMsg = String(resData.message || '');
+                        let lowerErr = errMsg.toLowerCase();
 
-                        if (errMsg.includes('UrlFetchApp') || errMsg.includes('izin') || errMsg.includes('permission')) {
+                        if (lowerErr.includes('urlfetchapp') || lowerErr.includes('izin') || lowerErr.includes('permission')) {
                             appendAIMessage("[SYS_WARN] **Sistem Keamanan Aktif:** Maaf, pengurus belum membuka izin akses (*Otorisasi Google*) agar saya bisa terhubung ke server utama. Mohon hubungi Bendahara untuk memperbarui izin skrip aplikasi ini.", 'ai');
+                        } else if (lowerErr.includes('high demand') || lowerErr.includes('overloaded') || lowerErr.includes('503')) {
+                            // Penanganan khusus jika Google API Gemini sedang antre panjang
+                            appendAIMessage("[SYS_WARN] **Server Sibuk:** Antrean satelit sedang penuh karena tingginya permintaan. Mohon tunggu beberapa detik dan coba tanyakan lagi ya.", 'ai');
+                        } else if (lowerErr.includes('quota') || lowerErr.includes('exhausted') || lowerErr.includes('429')) {
+                            // Penanganan jika limit API Key habis
+                            appendAIMessage("[SYS_WARN] **Limit Akses:** Kuota komunikasi NAVA dengan satelit pusat telah habis untuk sementara waktu. Mohon lapor ke Bendahara.", 'ai');
+                        } else if (lowerErr.includes('models/') || lowerErr.includes('error:') || lowerErr.includes('api key') || lowerErr.includes('html>')) {
+                            // BLOKIR MUTLAK: Sembunyikan kode mentah, path model, dan HTML dari UI Warga!
+                            console.error("NAVA AI Raw Server Error:", errMsg); // Tetap log di Inspect Element untuk keperluan Debug Developer
+                            appendAIMessage("[SYS_WARN] **Kendala Jaringan:** NAVA mengalami gangguan koneksi internal sementara ke server kecerdasan buatan. Silakan coba beberapa saat lagi.", 'ai');
                         } else if (errMsg !== '') {
-                            // PEMBONGKARAN TOPENG KOSMETIK: Tampilkan pesan error sesungguhnya dari server GAS!
-                            appendAIMessage("[SYS_WARN] **KENDALA SERVER:** " + errMsg, 'ai');
+                            // Hanya loloskan jika error berupa teks normal (bahasa manusia) yang memang sengaja dikirim dari Apps Script Anda
+                            appendAIMessage("[SYS_WARN] **Informasi:** " + errMsg, 'ai');
                         } else {
-                            appendAIMessage("[SYS_WARN] Maaf, saat ini saya sedang beristirahat atau mengalami kendala komunikasi dengan satelit pusat. Silakan coba beberapa saat lagi.", 'ai');
+                            appendAIMessage("[SYS_WARN] Maaf, saat ini saya sedang beristirahat atau mengalami kendala komunikasi. Silakan coba beberapa saat lagi.", 'ai');
                         }
                     }
                 } catch (e) {
@@ -13900,19 +15000,61 @@ if (tipe === 'KEG') {
             function appendAIMessage(text, sender) {
                 let history = document.getElementById('ai-chat-history');
                 
+            // THE ABSOLUTE EMOJI ANNIHILATOR (COGNITIVE FIREWALL V2.1)
+            let textNoEmoji = text.replace(/[\u1000-\uFFFF]+/g, '').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
+            try { textNoEmoji = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''); } catch(e){}
+                
             // XSS SHIELD & SMART MARKDOWN PARSER (Translasi Bintang ke Tag HTML Aman)
-            let formattedText = esc(text)
+            let formattedText = esc(textNoEmoji)
                 .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Tangani **Bold**
                 .replace(/(^|\n)[\*\-\•]\s+/g, '$1• ')  // PROTEKSI MUTLAK: Tangani Bullet/List murni sebelum Parser Italic bekerja
                 .replace(/\*(.*?)\*/g, '<i>$1</i>')     // Tangani *Italic*
                 .replace(/\n/g, '<br>')                 // Tangani Enter Baris
                 
+                // THE ARCHITECT FIX V2: ADVANCED AUTO-COPY EXTRACTOR (Deteksi No WA & Rekening Bank Berspasi/Simbol)
+                .replace(/(?:\+62|08|\b\d{2,4})[0-9\s\-\.]{6,16}\b/g, function(match) {
+                    let cleanNum = match.replace(/\D/g, '');
+                    // Validasi: 10-16 digit murni dan bukan format tanggal (YYYY-MM-DD)
+                    if (cleanNum.length >= 10 && cleanNum.length <= 16 && !match.match(/^\d{4}-\d{2}-\d{2}/)) {
+                        return `<span class="no-select" style="display:inline-flex; align-items:center; gap:6px; background:#EFF6FF; color:#1D4ED8; padding:2px 8px; border-radius:6px; border:1px solid #BFDBFE; font-family:monospace; font-weight:900; cursor:pointer; margin:2px; transition:transform 0.2s;" onclick="window.copyRekening('${cleanNum}', '${cleanNum}')" onmousedown="this.style.transform='scale(0.92)'" onmouseup="this.style.transform='scale(1)'" title="Salin Data">${match} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>`;
+                    }
+                    return match;
+                })
+
                 // INJEKSI SURGICAL FIX: Post-Sanitization SVG Injection (Mengganti Token dengan SVG Murni)
                 .replace(/\[SYS_WARN\]/g, '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="3" style="vertical-align: text-bottom; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>')
                 .replace(/\[SYS_ERR\]/g, '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3" style="vertical-align: text-bottom; margin-right: 4px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>');
             
             // INJEKSI SURGICAL FIX: Regex Pemisah untuk First-Line Markdown Bullet agar tidak terjadi spasi kosong (Broken <br>)
             formattedText = formattedText.replace(/^[\-\•]\s+/g, '• ').replace(/<br>[\-\•]\s+/g, '<br>• ');
+
+            // --- [FITUR 1: AGENTIC UI INTERCEPTOR] ---
+            // Mencegat Command Navigation dari AI agar tidak tercetak di layar Warga/User
+            let commandMatch = formattedText.match(/\[CMD:([A-Z_]+)\]/);
+            if (commandMatch && sender === 'ai') {
+                let cmd = commandMatch[1];
+                formattedText = formattedText.replace(commandMatch[0], '').trim(); // Hapus tag gaib dari UI
+                
+                // Eksekusi asinkron: Biarkan bubble UI selesai di-render sebelum DOM Navigation berjalan
+                setTimeout(() => {
+                    // RBAC SECURITY SHIELD: Pastikan Role mengizinkan
+                    let rbac = localStorage.getItem('nav_role');
+                    let isAdmin = !rbac || rbac === 'admin' || rbac === null;
+                    
+                    if (cmd === 'NAV_BERANDA') navTo('home');
+                    else if (cmd === 'NAV_MUTASI') navTo('trx');
+                    else if (cmd === 'NAV_IURAN') navTo('iuran');
+                    else if (cmd === 'NAV_PROGRAM') navTo('acara');
+                    else if (cmd === 'NAV_PROFIL') navTo('profil');
+                    
+                    // Proteksi Lapis Baja untuk Modal Admin (Hanya Eksekusi jika bukan Warga/Anggota biasa)
+                    if (isAdmin) {
+                        if (cmd === 'MODAL_TRX') openModal('mod-trx');
+                        else if (cmd === 'MODAL_EVENT') openModal('mod-event-add');
+                        else if (cmd === 'MODAL_SETTINGS') openModal('mod-settings');
+                    }
+                }, 800);
+            }
 
             let html = `<div class="msg-bubble msg-${sender}">${formattedText}</div>`;
                 history.insertAdjacentHTML('beforeend', html);
@@ -13923,3 +15065,4 @@ if (tipe === 'KEG') {
         </script>
 </body>
 </html>
+
