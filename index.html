@@ -367,7 +367,7 @@
             document.head.appendChild(curtain);
         }
 
-        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbwGa148RZgH7M-ZZ_sRg3JzcnXnEm3Cl2Z_xC9WiJjG4IbARLV5A2Sn4WUz0EeLhfD_/exec";
+        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbwnYquKk0u6h8ezcVZFnX0fX36BaLwY026p2OrCytSWisPXYFY45BvVhxyDxHjrqGgW/exec";
         const CLOUD_API_TOKEN = "Navasena29082026";
 
         // --- KONFIGURASI INDEXEDDB LOKAL ---
@@ -1138,18 +1138,13 @@
                 dummy.setSelectionRange(0, 99999); 
                 try { document.execCommand("copy"); } catch(e) {}
                 document.body.removeChild(dummy);
-                showToast("✔️ Rekening " + bnk + " berhasil disalin!");
+                showToast("✔️ " + bnk + " berhasil disalin!");
             }
         };
 
-        // THE NAVA AI VIRTUAL ASSISTANT (FAILSAFE / STUB PROTOCOL)
-        window.openAIChat = function() {
-            if(typeof pulseHaptic === 'function') pulseHaptic('light');
-            // Menjinakkan Uncaught TypeError dan mencegah Omni-Hub UI Frozen
-            showToast("ℹ️ Fitur NAVA AI Assistant sedang dalam tahap pengembangan (Coming Soon).");
-            
-            // JIKA NANTI ANDA MENGHUBUNGKAN API PIHAK KETIGA (OPENAI/GEMINI), LETAKKAN LOGIKA PEMANGGILAN / MODAL DI SINI.
-        };
+        // THE NAVA AI VIRTUAL ASSISTANT
+        // Failsafe Stub lama telah dimusnahkan.
+        // Pemanggilan window.openAIChat() sekarang di-*handle* sepenuhnya oleh <script id="module-ai-assistant"> di Bagian Kedua.
 
         // 1. TANGGAL HEADER DINAMIS
         function updateHeaderDate() {
@@ -1525,8 +1520,8 @@
                 let titleCard = d.id === 'DP-UTAMA' ? `KAS <span class="font-nasa" style="font-size: 1.2em; letter-spacing: 0.5px;">NAVASENA</span>` : esc(d.nama);
                 
                 dompetHtml += `
-                <div class="no-select" style="flex: 0 0 160px; scroll-snap-align: start; ${bgStyle} padding: 16px; border-radius: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; cursor: ${d.id === 'DP-UTAMA' ? 'pointer' : 'default'}; transition: 0.2s;" ${d.id === 'DP-UTAMA' ? 'onclick="if(typeof openKasUtamaDrilldown === \'function\') openKasUtamaDrilldown()" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'"' : ''}>
-                    ${d.id === 'DP-UTAMA' ? '<div style="position: absolute; right: -20px; top: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div><div style="position: absolute; right: 12px; top: 12px; background: rgba(255,255,255,0.2); padding: 4px; border-radius: 50%;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 3 21 3 21 9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><line x1="21" y1="3" x2="14" y2="10"/></svg></div>' : ''}
+                <div class="no-select" style="flex: 0 0 160px; scroll-snap-align: start; ${bgStyle} padding: 16px; border-radius: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; cursor: default; transition: 0.2s;">
+                    ${d.id === 'DP-UTAMA' ? '<div style="position: absolute; right: -20px; top: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;"></div><div style="position: absolute; right: 12px; top: 12px; background: rgba(255,255,255,0.2); padding: 4px; border-radius: 50%; cursor: pointer; z-index: 10; transition: transform 0.2s;" onclick="if(typeof openKasUtamaDrilldown === \'function\') openKasUtamaDrilldown()" onmousedown="this.style.transform=\'scale(0.85)\'" onmouseup="this.style.transform=\'scale(1)\'" ontouchstart="this.style.transform=\'scale(0.85)\'" ontouchend="this.style.transform=\'scale(1)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 3 21 3 21 9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><line x1="21" y1="3" x2="14" y2="10"/></svg></div>' : ''}
                     <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; ${textSub} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 2;">${titleCard}</div>
                     <div style="font-size: 16px; font-weight: 900; position: relative; z-index: 2; letter-spacing: -0.5px;">Rp ${fmtRp(saldoDompet)}</div>
                 </div>`;
@@ -4607,13 +4602,19 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
 
-                    <button class="ios-item" onclick="openInboxAspirasi()">
-                        <div class="ios-icon" style="background: transparent; color: #334155;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-                        <span style="flex: 1;">Kotak Pesan / Aspirasi</span>
-                        <span id="badge-aspirasi" style="display:none; background:var(--danger); color:white; font-size:10px; font-weight:900; padding:3px 8px; border-radius:10px; margin-right:8px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);">0 BARU</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
-                </div>
+                            <button class="ios-item" onclick="openInboxAspirasi()" style="border-bottom: 1px solid var(--border);">
+                                <div class="ios-icon" style="background: transparent; color: #334155;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+                                <span style="flex: 1;">Kotak Pesan / Aspirasi</span>
+                                <span id="badge-aspirasi" style="display:none; background:var(--danger); color:white; font-size:10px; font-weight:900; padding:3px 8px; border-radius:10px; margin-right:8px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);">0 BARU</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+
+                            <button class="ios-item" onclick="openKarantinaAI()">
+                                <div class="ios-icon" style="background: transparent; color: #059669;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="12" r="3"/></svg></div>
+                                <span style="flex: 1; color: #059669; font-weight: 900;">Pusat Kognitif AI (Quarantine)</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7F3D0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
 
                 <!-- GRUP 2: PELAPORAN & EKSPOR (BENTO BOX ACCORDION) -->
                 <div style="background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 32px;" class="no-select">
@@ -5065,7 +5066,6 @@ if (tipe === 'KEG') {
                             s[alokMatch[1].toUpperCase()] -= amt;
                         } else { s.BEBAS -= amt; }
                         s.TOTAL -= amt;
-                    }
                     }
                 });
                 return s;
@@ -6712,12 +6712,21 @@ if (tipe === 'KEG') {
                         if (newDompet) state.dompet.push(newDompet);
                         state.event.push(ev);
                         
+                        // [INJEKSI IDE 1: PREDICTIVE TEMPORAL PREFETCHING]
+                        // Memicu AI meracik FAQ otomatis tanpa disuruh warga
+                        let prefetchId = genID('MEM');
+                        let qPrefetch = { id: prefetchId, tipe_data: 'LEARNING_QUEUE', kata_kunci: `INFO ACARA ${n.toUpperCase()}`, payload: `Tolong buatkan FAQ (Tanya Jawab) singkat dan menarik untuk program Karang Taruna NAVASENA bernama: "${n}". Sebutkan juga target dananya jika ada (Target: Rp ${fmtRp(t)}).`, access_level: 'PENDING', last_sync: Date.now() };
+                        await saveStore('nava_memory', qPrefetch);
+                        state.nava_memory.push(qPrefetch);
+                        
                         localStorage.setItem('nav_unsynced', 'true');
                         document.getElementById('evt-nama').value = ''; document.getElementById('evt-target').value = '';
-                        closeModal('mod-event-add'); showToast("Program acara reguler berhasil dibuat."); 
+                        closeModal('mod-event-add'); showToast("Program acara berhasil dibuat. AI mulai meracik FAQ."); 
                         
                         renderAcara();
                         if(currView==='home') updateDashboard();
+                        // Pancing Auto-Sync Siluman ke Server
+                        if (navigator.onLine && typeof syncToCloud === 'function') setTimeout(() => syncToCloud(true), 2000);
                     }
                 } catch (e) { 
                     showToast("Gagal menginisiasi program."); 
@@ -7486,7 +7495,7 @@ if (tipe === 'KEG') {
                 });
                 document.getElementById('list-dompet-ui').innerHTML = h;
             }
-
+            
             async function saveDompetBaru() {
                 if(isKiosk) return showToast("DITOLAK: Mode Audit Aktif.");
                 if(window.isProcessingMaster) return; // PROTEKSI RACE CONDITION MUTLAK
@@ -8160,6 +8169,110 @@ if (tipe === 'KEG') {
                 }, 250);
             }
 
+            // --- THE QUARANTINE ZONE (AI ASSISTED RESOLUTION - ACCORDION UI) ---
+            window.openKarantinaAI = function() {
+                if(isKiosk) return showToast("DITOLAK: Sistem Terkunci.");
+                let qItems = state.nava_memory.filter(m => m.tipe_data === 'LEARNING_QUEUE' && m.access_level === 'QUARANTINE');
+                
+                let html = '';
+                if(qItems.length === 0) {
+                    html = '<div class="no-select" style="text-align:center; font-size:12px; color:var(--text-muted); padding:32px 20px; border: 1.5px dashed var(--border); border-radius: 12px;">Pusat Karantina AI kosong.<br><br><b style="color:var(--primary);">Status:</b> Seluruh pertanyaan warga sudah terjawab atau belum ada siklus belajar dari Satelit.</div>';
+                } else {
+                    qItems.sort((a,b) => b.last_sync - a.last_sync);
+                    qItems.forEach(item => {
+                        let parsed = { A: 'Error parsing', B: 'Error parsing', C: 'Error parsing' };
+                        try { parsed = JSON.parse(item.payload); } catch(e) {}
+                        
+                        // Ekstraksi Nama Pengirim (Fallback ke 'Warga/Anonim' jika kosong)
+                        let senderName = item.pengirim && item.pengirim.trim() !== "" ? item.pengirim : "Warga/Anonim";
+                        
+                        // THE ACCORDION BLUEPRINT (Menggunakan <details> murni yang kebal bug EventListener JS)
+                        html += `
+                        <details style="margin-bottom: 12px; background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                            
+                            <summary style="background: #F8FAFC; padding: 14px 16px; font-weight: bold; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E2E8F0; transition: background 0.2s;">
+                                <div style="display: flex; flex-direction: column; width: 85%;">
+                                    <div style="font-size:10px; font-weight:900; color:#059669; text-transform:uppercase; margin-bottom:4px;">PR NAVA AI Menunggu Diperiksa</div>
+                                    <span style="color: #0F172A; font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Dari: ${esc(senderName)}</span>
+                                    <span style="color: #64748B; font-size: 11px; margin-top: 4px; font-weight: 600;">Topik: ${esc(item.kata_kunci.substring(0, 30))}...</span>
+                                </div>
+                                <div style="color: #3B82F6; font-size: 14px; background: #DBEAFE; padding: 6px 10px; border-radius: 8px;">Buka</div>
+                            </summary>
+                            
+                            <div style="padding: 16px; background: var(--surface);">
+                                <div style="font-size:10px; font-weight:800; color:var(--text-muted); margin-bottom:12px;">PILIH OPSI GAYA BAHASA JAWABAN:</div>
+                                
+                                <div style="display:flex; flex-direction:column; gap:12px;">
+                                    <div style="background:#FFFFFF; border:1.5px solid #BFDBFE; border-radius:12px; padding:16px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.05);">
+                                        <div style="font-size:10px; font-weight:900; color:#1D4ED8; margin-bottom:8px; border-bottom: 1px dashed #BFDBFE; padding-bottom: 6px; text-transform: uppercase;">OPSI A (Formal & Baku)</div>
+                                        <div style="font-size:13px; color:var(--text-main); line-height: 1.5; margin-bottom: 14px;">${esc(parsed.A)}</div>
+                                        <button class="btn no-select" style="width: 100%; background: #EFF6FF; color: #1D4ED8; border: 1.5px solid #3B82F6; font-size: 11px; font-weight: 900; padding: 12px; border-radius: 8px; box-shadow: none; transition: 0.2s;" onmousedown="this.style.background='#DBEAFE'" onmouseup="this.style.background='#EFF6FF'" onclick="approveAI('${item.id}', 'A')">SIMPAN OPSI A</button>
+                                    </div>
+
+                                    <div style="background:#FFFFFF; border:1.5px solid #A7F3D0; border-radius:12px; padding:16px; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.05);">
+                                        <div style="font-size:10px; font-weight:900; color:#047857; margin-bottom:8px; border-bottom: 1px dashed #A7F3D0; padding-bottom: 6px; text-transform: uppercase;">OPSI B (Santai & Bersahabat)</div>
+                                        <div style="font-size:13px; color:var(--text-main); line-height: 1.5; margin-bottom: 14px;">${esc(parsed.B)}</div>
+                                        <button class="btn no-select" style="width: 100%; background: #ECFDF5; color: #047857; border: 1.5px solid #10B981; font-size: 11px; font-weight: 900; padding: 12px; border-radius: 8px; box-shadow: none; transition: 0.2s;" onmousedown="this.style.background='#D1FAE5'" onmouseup="this.style.background='#ECFDF5'" onclick="approveAI('${item.id}', 'B')">SIMPAN OPSI B</button>
+                                    </div>
+
+                                    <div style="background:#FFFFFF; border:1.5px solid #FDE68A; border-radius:12px; padding:16px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.05);">
+                                        <div style="font-size:10px; font-weight:900; color:#B45309; margin-bottom:8px; border-bottom: 1px dashed #FDE68A; padding-bottom: 6px; text-transform: uppercase;">OPSI C (Singkat & Padat)</div>
+                                        <div style="font-size:13px; color:var(--text-main); line-height: 1.5; margin-bottom: 14px;">${esc(parsed.C)}</div>
+                                        <button class="btn no-select" style="width: 100%; background: #FFFBEB; color: #B45309; border: 1.5px solid #F59E0B; font-size: 11px; font-weight: 900; padding: 12px; border-radius: 8px; box-shadow: none; transition: 0.2s;" onmousedown="this.style.background='#FEF3C7'" onmouseup="this.style.background='#FFFBEB'" onclick="approveAI('${item.id}', 'C')">SIMPAN OPSI C</button>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline" style="width:100%; margin-top:16px; border-color:var(--danger); color:var(--danger); font-size:11px; padding:12px;" onclick="rejectAI('${item.id}')">Tolak & Hapus Pertanyaan Ini</button>
+                            </div>
+                        </details>`;
+                    });
+                }
+                
+                // Manfaatkan UI Modal Inbox untuk merender Karantina agar menghemat DOM (Reuse Modal)
+                document.querySelector('#mod-inbox h3').innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="12" r="3"/></svg> Karantina AI`;
+                document.querySelector('#mod-inbox h3').style.color = '#059669';
+                document.querySelector('#mod-inbox h3').nextElementSibling.innerText = 'Pusat Persetujuan Pengetahuan NAVA AI';
+                document.getElementById('inbox-list').innerHTML = html;
+                openModal('mod-inbox');
+            };
+
+                window.approveAI = async function(memId, opt) {
+                if(window.isProcessingMaster) return;
+                window.isProcessingMaster = true;
+                try {
+                    let mem = state.nava_memory.find(m => m.id === memId);
+                    let parsed = JSON.parse(mem.payload);
+                    let finalAnswer = parsed[opt];
+                    // THE SEMANTIC EXTRACTOR: Tarik kata kunci buatan AI dari JSON, atau fallback ke teks asli
+                    let finalKeywords = parsed.K ? String(parsed.K).toLowerCase() : mem.kata_kunci; 
+                    
+                    let memUpdate = { ...mem, kata_kunci: finalKeywords, payload: finalAnswer, access_level: 'SEMUA', tipe_data: 'SEMANTIC_CACHE', last_sync: Date.now() };                    
+                    try { idb.transaction('nava_memory', 'readonly'); } catch(err) { await initDB(); }
+                    await saveStore('nava_memory', memUpdate);
+                    
+                    let idx = state.nava_memory.findIndex(m => m.id === memId);
+                    if (idx > -1) state.nava_memory[idx] = memUpdate;
+                    
+                    localStorage.setItem('nav_unsynced', 'true');
+                    showToast("Pengetahuan NAVA AI disetujui!");
+                    openKarantinaAI();
+                } catch(e) { showToast("Gagal memproses persetujuan AI."); }
+                finally { window.isProcessingMaster = false; }
+            };
+
+            window.rejectAI = async function(memId) {
+                if(window.isProcessingMaster) return;
+                window.isProcessingMaster = true;
+                try {
+                    try { idb.transaction('nava_memory', 'readonly'); } catch(err) { await initDB(); }
+                    await deleteStore('nava_memory', memId);
+                    state.nava_memory = state.nava_memory.filter(m => m.id !== memId);
+                    localStorage.setItem('nav_unsynced', 'true');
+                    showToast("🗑️ Memori AI ditolak dan dibuang.");
+                    openKarantinaAI();
+                } catch(e) { showToast("Gagal membuang memori."); }
+                finally { window.isProcessingMaster = false; }
+            };
+
             // --- INBOX & ASPIRASI ---
             async function submitAspirasiTrojan() {
                 let btn = document.getElementById('btn-kirim-aspirasi');
@@ -8387,10 +8500,15 @@ if (tipe === 'KEG') {
             worksheet['!cols'] = wscols;
 
                     // SURGICAL FIX: JIT DB Connection Healer
-                    try { idb.transaction('dompet', 'readonly'); } catch(err) { await initDB(); }
+                    try { idb.transaction(['dompet', 'aspirasi'], 'readonly'); } catch(err) { await initDB(); }
                     
                     const dompetData = await new Promise(r => { 
                         const req = idb.transaction('dompet', 'readonly').objectStore('dompet').getAll(); 
+                        req.onsuccess = () => r(req.result || []); 
+                        req.onerror = () => r([]); 
+                    });
+                    const aspirasiData = await new Promise(r => { 
+                        const req = idb.transaction('aspirasi', 'readonly').objectStore('aspirasi').getAll(); 
                         req.onsuccess = () => r(req.result || []); 
                         req.onerror = () => r([]); 
                     });
@@ -8404,7 +8522,7 @@ if (tipe === 'KEG') {
                         req.onerror = () => r(res);
                     });
                     
-                    const fullData = { trx: dbTrx, anggota: state.anggota, event: state.event, dompet: dompetData };
+                    const fullData = { trx: dbTrx, anggota: state.anggota, event: state.event, dompet: dompetData, aspirasi: aspirasiData, nava_memory: state.nava_memory };
                     let jsonStr = JSON.stringify(fullData);
                     let chunks = [];
                     let chunkIdx = 0;
@@ -10061,9 +10179,9 @@ if (tipe === 'KEG') {
                     <!-- Pesan akan masuk ke sini via JS -->
                 </div>
 
-                <div style="padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-shrink: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02); z-index: 5;">
-                    <input type="text" id="ai-chat-input" placeholder="Tanya sesuatu tentang aplikasi..." autocomplete="off" style="flex: 1; background: #F1F5F9; border: 1.5px solid #E2E8F0; border-radius: 20px; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text-main); margin: 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);" onkeypress="if(event.key === 'Enter') window.sendAIMessage()" onfocus="if(window.navaAiViewportSync) window.navaAiViewportSync()">
-                    <button id="btn-send-ai" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-grad); border: none; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3); transition: 0.2s;" onclick="window.sendAIMessage()" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
+                <div style="padding: 12px 16px; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.02); z-index: 5;">
+                    <textarea id="ai-chat-input" rows="1" placeholder="Tanya sesuatu tentang aplikasi..." autocomplete="off" style="flex: 1; background: #F1F5F9; border: 1.5px solid #E2E8F0; border-radius: 20px; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text-main); margin: 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); resize: none; overflow-y: auto; max-height: 120px; line-height: 1.4; display: block;" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); window.sendAIMessage(); }" onfocus="if(window.navaAiViewportSync) window.navaAiViewportSync()"></textarea>
+                    <button id="btn-send-ai" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-grad); border: none; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3); transition: 0.2s; margin-bottom: 2px;" onclick="window.sendAIMessage()" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                 </div>
@@ -12150,9 +12268,24 @@ if (tipe === 'KEG') {
                         } catch(e) { resolve([]); }
                     });
 
+                    // [SURGICAL FIX] BUKA GERBANG AI UNTUK WARGA: Ekstrak pertanyaan 'PR' yang menggantung di memori lokal
+                    let localPRQueue = await new Promise(resolve => {
+                        try {
+                            const tx = idb.transaction('nava_memory', 'readonly');
+                            const req = tx.objectStore('nava_memory').getAll();
+                            req.onsuccess = () => {
+                                let allMem = req.result || [];
+                                // HANYA izinkan warga mengekspor data PR (Pending), blokir data memori lainnya!
+                                resolve(allMem.filter(m => m.tipe_data === 'LEARNING_QUEUE' && m.access_level === 'PENDING'));
+                            };
+                            req.onerror = () => resolve([]);
+                        } catch(e) { resolve([]); }
+                    });
+
                     let payload = {
                         is_master: isAuthMaster,
-                        aspirasi: localAspirasi // Mencegah Null Reference (sebelumnya state.aspirasi yang Undefined)
+                        aspirasi: localAspirasi, // Mencegah Null Reference (sebelumnya state.aspirasi yang Undefined)
+                        nava_memory: localPRQueue // Warga sekarang bisa mengirim pertanyaan AI ke Satelit Server!
                     };
 
                     if (isAuthMaster) {
@@ -12198,15 +12331,28 @@ if (tipe === 'KEG') {
                     // SURGICAL FIX: Akui 'queued' dari Arsitektur Front-Door Async Queue GAS
                     if (resData.status === "Sukses" || resData.status === "sukses" || resData.status === "queued") {
                         
-                        // GHOST OUTBOX SELF-DESTRUCT (Anihilasi Pesan Jika Sukses)
+                        // GHOST OUTBOX SELF-DESTRUCT (Anihilasi Pesan & Pertanyaan AI Warga Jika Sukses Terkirim)
                         // [SURGICAL FIX]: Cegah pemusnahan pesan lokal jika sinkronisasi dilakukan oleh Admin (isAuthMaster = true).
-                        // Hanya Warga (Guest) yang pesannya boleh dimusnahkan dari memori setelah sukses terkirim (Ghost Outbox murni).
-                        if (!isAuthMaster && localAspirasi && localAspirasi.length > 0) {
+                        // Hanya Warga (Guest) yang outbox-nya dimusnahkan setelah sukses meluncur ke server.
+                        if (!isAuthMaster) {
                             try {
-                                let txAsp = idb.transaction('aspirasi', 'readwrite');
-                                let storeAsp = txAsp.objectStore('aspirasi');
-                                localAspirasi.forEach(asp => storeAsp.delete(asp.id));
-                                await new Promise(r => { txAsp.oncomplete = r; txAsp.onerror = r; });
+                                let storesToClear = [];
+                                if (localAspirasi && localAspirasi.length > 0) storesToClear.push('aspirasi');
+                                if (localPRQueue && localPRQueue.length > 0) storesToClear.push('nava_memory');
+                                
+                                if (storesToClear.length > 0) {
+                                    let txGhost = idb.transaction(storesToClear, 'readwrite');
+                                    
+                                    if (storesToClear.includes('aspirasi')) {
+                                        let storeAsp = txGhost.objectStore('aspirasi');
+                                        localAspirasi.forEach(asp => storeAsp.delete(asp.id));
+                                    }
+                                    if (storesToClear.includes('nava_memory')) {
+                                        let storeNava = txGhost.objectStore('nava_memory');
+                                        localPRQueue.forEach(pr => storeNava.delete(pr.id));
+                                    }
+                                    await new Promise(r => { txGhost.oncomplete = r; txGhost.onerror = r; });
+                                }
                             } catch (e) {}
                         }
 
@@ -12523,18 +12669,10 @@ if (tipe === 'KEG') {
                 let namaKetua = ketuaAg ? `<u style="font-weight:bold;">${esc(ketuaAg.nama)}</u>` : `( ________________________ )`;
 
                 let html = `
-                <style>
-                    @import url('https://fonts.cdnfonts.com/css/nasalization-2');
-                    .font-nasa { font-family: 'Nasalization', sans-serif !important; }
-                    @media print {
-                        @page { size: portrait; margin: 15mm 12mm 15mm 12mm; }
-                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Times New Roman', Times, serif; }
-                        #print-lpj-container { display: block !important; position: static !important; width: 100% !important; color: #000 !important; background: white !important; }
-                    }
-                </style>
-                <div style="font-family: 'Times New Roman', Times, serif; color: #000; position: relative; width: 100%; min-height: 100vh;">
+                <div style="font-family: 'Times New Roman', Times, serif; color: #000; position: relative; width: 100%; min-height: 100vh; background: white;">
                     
-                    ${appLogo ? `<img src="${appLogo}" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 550px; opacity: 0.15; z-index: 0; pointer-events: none; object-fit: contain;">` : ''}
+                    ${appLogo ? `<img src="${appLogo}" style="position: absolute; top: 25%; left: 0; right: 0; margin: 0 auto; width: 85%; max-width: 550px; opacity: 0.15; z-index: -1; pointer-events: none; object-fit: contain;">` : ''}
+
                     
                     <!-- KOP SURAT -->
                     <div style="display: flex; align-items: center; border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 2px;">
@@ -12618,14 +12756,66 @@ if (tipe === 'KEG') {
                     </div>
                 </div>`;
                 
-                document.getElementById('print-lpj-container').innerHTML = html;
-                showToast("Memproses Cetak Laporan LPJ.");
+                // [INJEKSI IDE 3: ASYNCHRONOUS ROBO-AUDITOR - DENGAN ANTI-SPAM SHIELD]
+                let tNowLPJ = new Date();
+                let blnNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                let periodeKunci = `KONDISI KAS ${blnNames[tNowLPJ.getMonth()].toUpperCase()} ${tNowLPJ.getFullYear()}`;
+
+                let isAlreadyAudited = state.nava_memory.some(m => String(m.kata_kunci).includes(periodeKunci));
+                if (!isAlreadyAudited) {
+                    let auditId = genID('MEM');
+                    let qAudit = { id: auditId, tipe_data: 'LEARNING_QUEUE', kata_kunci: periodeKunci, payload: `Bertindaklah sebagai Auditor Keuangan. Buatkan narasi singkat (3 paragraf) kondisi kas NAVASENA saat ini (${periodeKunci}): Saldo Awal Rp ${fmtRp(sAwal)}, Total Pemasukan Rp ${fmtRp(tIn)}, Total Pengeluaran Rp ${fmtRp(tOut)}, Saldo Akhir Rp ${fmtRp(saldoOrg)}. Evaluasi apakah surplus atau defisit.`, access_level: 'PENDING', last_sync: Date.now() };
+                    saveStore('nava_memory', qAudit).then(() => {
+                        state.nava_memory.push(qAudit);
+                        localStorage.setItem('nav_unsynced', 'true');
+                        if (navigator.onLine && typeof syncToCloud === 'function') setTimeout(() => syncToCloud(true), 2000);
+                    });
+                }
+
+                showToast("Memproses Cetak LPJ. AI sedang mengaudit...");
                 closeModal('mod-settings'); document.body.classList.remove('modal-open');
                 
-                // [SURGICAL FIX]: Event 'onafterprint' dimusnahkan. 
-                // OS Android dilarang membunuh DOM sebelum Print Spooler selesai memfoto PDF.
-                setTimeout(() => window.print(), 1500);
+                // THE ISOLATED IFRAME PRINT PROTOCOL (Bypass Android WebView Blank Bug)
+                // Memusnahkan CSSOM Conflict & Overflow Clipping pada PWA
+                let printFrame = document.createElement('iframe');
+                printFrame.style.position = 'fixed';
+                printFrame.style.top = '-9999px';
+                printFrame.style.left = '-9999px';
+                printFrame.style.width = '100%';
+                printFrame.style.height = '100%';
+                printFrame.style.zIndex = '-1';
+                document.body.appendChild(printFrame);
 
+                let fDoc = printFrame.contentWindow.document;
+                fDoc.open();
+                fDoc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>LPJ NAVASENA</title>
+                        <style>
+                            @import url('https://fonts.cdnfonts.com/css/nasalization-2');
+                            .font-nasa { font-family: 'Nasalization', sans-serif !important; }
+                            @media print {
+                                @page { size: portrait; margin: 15mm 12mm; }
+                                html, body { width: 100%; height: auto; min-height: 100%; overflow: visible !important; background: white !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${html}
+                    </body>
+                    </html>
+                `);
+                fDoc.close();
+
+                setTimeout(() => {
+                    try {
+                        printFrame.contentWindow.focus();
+                        printFrame.contentWindow.print();
+                    } catch (e) { console.error("Print Spooler Error:", e); }
+                    setTimeout(() => { printFrame.remove(); }, 3000);
+                }, 1000);
             }
 
             window.generateEventLPJ = function(idEvent) {
@@ -12770,23 +12960,10 @@ if (tipe === 'KEG') {
                 let namaBdh = bendaharaAg ? `<u style="font-weight:bold;">${esc(bendaharaAg.nama)}</u>` : `( ________________________ )`;
 
                 let html = `
-                <style>
-                    /* THE ARCHITECT FIX: Import MUTLAK harus di paling atas */
-                    @import url('https://fonts.cdnfonts.com/css/nasalization-2');
+                <div style="font-family: 'Times New Roman', Times, serif; color: #000; position: relative; width: 100%; min-height: 100vh; background: white;">
                     
-                    /* THE ARCHITECT FIX: Class font harus global agar diload memori lebih awal */
-                    .font-nasa { font-family: 'Nasalization', sans-serif !important; }
+                    ${appLogo ? `<img src="${appLogo}" style="position: absolute; top: 25%; left: 0; right: 0; margin: 0 auto; width: 85%; max-width: 550px; opacity: 0.15; z-index: -1; pointer-events: none; object-fit: contain;">` : ''}
 
-                    @media print {
-                        @page { size: portrait; margin: 15mm 12mm 15mm 12mm; }
-                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Times New Roman', Times, serif; }
-                        #print-lpj-container { display: block !important; position: static !important; width: 100% !important; color: #000 !important; background: white !important; }
-                    }
-
-                </style>
-                <div style="font-family: 'Times New Roman', Times, serif; color: #000; position: relative; width: 100%; min-height: 100vh;">
-                    
-                    ${appLogo ? `<img src="${appLogo}" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 550px; opacity: 0.15; z-index: 0; pointer-events: none; object-fit: contain;">` : ''}
                     
                     <!-- KOP SURAT RESMI REPLIKA (NAVASENA RT 05) - PERFECT CENTER BALANCER FIX -->
                     <div style="display: flex; align-items: center; border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 2px;">
@@ -12856,17 +13033,52 @@ if (tipe === 'KEG') {
                     </div>
                 </div>`;
 
-                document.getElementById('print-lpj-container').innerHTML = html;
                 showToast("Memproses Cetak Laporan LPJ.");
                 
-                // Tutup modal apapun yang sedang terbuka agar tidak nyangkut saat print tertutup
+                // Tutup modal apapun yang sedang terbuka agar tidak nyangkut
                 document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
                 document.body.classList.remove('modal-open');
                 
-                // [SURGICAL FIX]: Timer pemusnah DOM dicabut mutlak agar CPU HP Kentang tidak kehilangan data saat merender PDF lambat.
-                // Beri waktu CPU kentang merender tabel DOM secara utuh sebelum memanggil Print Dialog
-                setTimeout(() => window.print(), 1500);
+                // THE ISOLATED IFRAME PRINT PROTOCOL (Bypass Android WebView Blank Bug)
+                let printFrame = document.createElement('iframe');
+                printFrame.style.position = 'fixed';
+                printFrame.style.top = '-9999px';
+                printFrame.style.left = '-9999px';
+                printFrame.style.width = '100%';
+                printFrame.style.height = '100%';
+                printFrame.style.zIndex = '-1';
+                document.body.appendChild(printFrame);
 
+                let fDoc = printFrame.contentWindow.document;
+                fDoc.open();
+                fDoc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>LPJ Program Acara NAVASENA</title>
+                        <style>
+                            @import url('https://fonts.cdnfonts.com/css/nasalization-2');
+                            .font-nasa { font-family: 'Nasalization', sans-serif !important; }
+                            @media print {
+                                @page { size: portrait; margin: 15mm 12mm; }
+                                html, body { width: 100%; height: auto; min-height: 100%; overflow: visible !important; background: white !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${html}
+                    </body>
+                    </html>
+                `);
+                fDoc.close();
+
+                setTimeout(() => {
+                    try {
+                        printFrame.contentWindow.focus();
+                        printFrame.contentWindow.print();
+                    } catch (e) { console.error("Print Spooler Error:", e); }
+                    setTimeout(() => { printFrame.remove(); }, 3000);
+                }, 1000);
             };
 
             // --- REWIND & OMNI BUTTON (BLAST WA) ---
@@ -13723,35 +13935,40 @@ if (tipe === 'KEG') {
             @keyframes typeBounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
         </style>
 
-        <script id="module-ai-assistant">
+<script id="module-ai-assistant">
             let isAITyping = false;
             let aiChatInitialized = false;
 
             window.openAIChat = function() {
-                if (!navigator.onLine) {
-                    // INJEKSI SURGICAL FIX: Memicu regex SVG Error bawaan showToast
-                    return showToast("Gagal: NAVA sedang tidur. Periksa koneksi internet Anda untuk membangunkannya.");
+                try {
+                    if (!navigator.onLine) {
+                        // INJEKSI SURGICAL FIX: Memicu regex SVG Error bawaan showToast
+                        if (typeof showToast === 'function') showToast("Gagal: NAVA sedang tidur. Periksa koneksi internet Anda untuk membangunkannya.");
+                        return;
+                    }
+                    
+                    let mod = document.getElementById('mod-ai-chat');
+                    if (mod) document.body.appendChild(mod); // Bawa ke tumpukan z-index teratas
+                    
+                    // [SURGICAL FIX]: BUKA MODAL TERLEBIH DAHULU AGAR LOLOS DARI GATEKEEPER GHOST SCROLL
+                    if (typeof openModal === 'function') openModal('mod-ai-chat');
+                    
+                    // Persiapkan layout Bottom Sheet SETELAH modal berstatus 'flex'
+                    if (window.navaAiViewportSync) window.navaAiViewportSync();
+                    
+                    if (!aiChatInitialized) {
+                        // Smart Markdown Formatting for First Greeting
+                        // INJEKSI SURGICAL FIX: Hapus Emoji untuk standar UI Enterprise
+                        let greetingText = "Halo! Saya **NAVA** \nAsisten Virtual Karang Taruna NAVASENA.\n\nSilakan tanyakan apa saja terkait operasional kas, transparansi dana, pedoman XP, atau cara menggunakan Portal NAVASENA ini.";
+                        if (typeof appendAIMessage === 'function') appendAIMessage(greetingText, 'ai');
+                        aiChatInitialized = true;
+                    }
+                    
+                    // [SURGICAL FIX V15]: AUTO-FOCUS DIAMPUTASI MUTLAK. 
+                    // Keyboard tidak akan lagi menyembur keluar secara otomatis. Pengguna memegang kendali penuh.
+                } catch(e) {
+                    console.error("Fatal Error Open AI:", e);
                 }
-                
-                let mod = document.getElementById('mod-ai-chat');
-                document.body.appendChild(mod); // Bawa ke tumpukan z-index teratas
-                
-                // [SURGICAL FIX]: BUKA MODAL TERLEBIH DAHULU AGAR LOLOS DARI GATEKEEPER GHOST SCROLL
-                openModal('mod-ai-chat');
-                
-                // Persiapkan layout Bottom Sheet SETELAH modal berstatus 'flex'
-                if (window.navaAiViewportSync) window.navaAiViewportSync();
-                
-                if (!aiChatInitialized) {
-                    // Smart Markdown Formatting for First Greeting
-                    // INJEKSI SURGICAL FIX: Hapus Emoji untuk standar UI Enterprise
-                    let greetingText = "Halo! Saya **NAVA** \nAsisten Virtual Karang Taruna NAVASENA.\n\nSilakan tanyakan apa saja terkait operasional kas, transparansi dana, pedoman XP, atau cara menggunakan Portal NAVASENA ini.";
-                    appendAIMessage(greetingText, 'ai');
-                    aiChatInitialized = true;
-                }
-                
-                // [SURGICAL FIX V15]: AUTO-FOCUS DIAMPUTASI MUTLAK. 
-                // Keyboard tidak akan lagi menyembur keluar secara otomatis. Pengguna memegang kendali penuh.
             };
 
             window.sendAIMessage = async function(overrideText = null, hiddenDirective = null) {
@@ -13763,6 +13980,7 @@ if (tipe === 'KEG') {
                 if (!navigator.onLine) return showToast("Gagal: Koneksi internet terputus.");
 
                 inputEl.value = '';
+                inputEl.style.height = 'auto'; // SURGICAL FIX: Reset tinggi textarea setelah dikirim
                 inputEl.focus(); 
                 appendAIMessage(text, 'user');
                 
@@ -13770,7 +13988,11 @@ if (tipe === 'KEG') {
                 document.getElementById('btn-send-ai').style.opacity = '0.5';
 
                 // THE ZERO-TOKEN INTERCEPTOR (BYPASS GOOGLE API MURNI DI KLIEN)
-                let cleanLower = text.toLowerCase().replace(/[^\w\s]/gi, '').trim();
+                // [SURGICAL FIX: LEET SPEAK DECRYPTOR] Menerjemahkan angka 'alay' ke alfabet secara mutlak
+                let cleanLower = text.toLowerCase()
+                    .replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e')
+                    .replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/8/g, 'b')
+                    .replace(/[^\w\s]/gi, '').trim();
                 let cRoleLokal = localStorage.getItem('nav_role');
                 let cUidLokal = localStorage.getItem('nav_user_id');
                 let isAdminLokal = !cRoleLokal || cRoleLokal === 'admin' || cRoleLokal === null;
@@ -13803,8 +14025,8 @@ if (tipe === 'KEG') {
                             let newMem = { id: genID('MEM'), tipe_data: 'SEMANTIC_CACHE', kata_kunci: w.data.keywords, payload: w.data.answer, access_level: w.data.acl, last_sync: Date.now() };
                             saveStore('nava_memory', newMem).then(() => {
                                 state.nava_memory.push(newMem); localStorage.setItem('nav_unsynced', 'true');
-                                endWizard("✅ **MEMORI TERSIMPAN!** NAVA sudah pintar. Data akan diunggah ke satelit malam ini.");
-                            });
+                                endWizard("**MEMORI TERSIMPAN!** NAVA sudah pintar. Data akan diunggah ke satelit malam ini.");
+                            }).catch(err => { endWizard("❌ **GAGAL SISTEM:** Database lokal menolak penyimpanan memori."); });
                             return;
                         }
                     } else if (w.mode === 'tambah') {
@@ -13818,8 +14040,8 @@ if (tipe === 'KEG') {
                             saveStore('anggota', nAg).then(() => {
                                 state.anggota.push(nAg);
                                 let aliasMem = { id: genID('MEM'), tipe_data: 'ALIAS_DICT', kata_kunci: w.data.nama, payload: w.data.alias, access_level: 'SEMUA', last_sync: Date.now() };
-                                saveStore('nava_memory', aliasMem).then(() => { state.nava_memory.push(aliasMem); localStorage.setItem('nav_unsynced', 'true'); window.renderListAnggota(); endWizard(`✅ **EKSEKUSI BERHASIL!** Sdr. ${w.data.nama} telah resmi terdaftar di database NAVASENA.`); });
-                            });
+                                saveStore('nava_memory', aliasMem).then(() => { state.nava_memory.push(aliasMem); localStorage.setItem('nav_unsynced', 'true'); window.renderListAnggota(); endWizard(`✅ **EKSEKUSI BERHASIL!** Sdr. ${w.data.nama} telah resmi terdaftar di database NAVASENA.`); }).catch(err => { endWizard("❌ **GAGAL SISTEM:** Gagal merekam Alias ke memori."); });
+                            }).catch(err => { endWizard("❌ **GAGAL SISTEM:** Database IDB menolak pendaftaran anggota."); });
                             return;
                         }
                     } else if (w.mode === 'acara') {
@@ -13828,7 +14050,7 @@ if (tipe === 'KEG') {
                         else if (w.step === 3 && lInput.includes('simpan')) {
                             let evId = genID('EV');
                             let nEv = { id: evId, nama: w.data.nama, target: w.data.target, status: 'aktif', id_dompet_default: 'DP-UTAMA', sifat: 'publik' };
-                            saveStore('event', nEv).then(() => { state.event.push(nEv); localStorage.setItem('nav_unsynced', 'true'); window.renderAcara(); endWizard(`✅ **BRANKAS ACARA DIBUKA!** Program ${w.data.nama} siap digunakan.`); });
+                            saveStore('event', nEv).then(() => { state.event.push(nEv); localStorage.setItem('nav_unsynced', 'true'); window.renderAcara(); endWizard(`✅ **BRANKAS ACARA DIBUKA!** Program ${w.data.nama} siap digunakan.`); }).catch(err => { endWizard("❌ **GAGAL SISTEM:** Gagal membuka brankas acara di database."); });
                             return;
                         }
                     } else if (w.mode === 'pengaturan') {
@@ -13881,27 +14103,27 @@ if (tipe === 'KEG') {
                     { nama: "Cica Krismayanti", ui: "Cica krismayanti", alias: ["cica", "ica"] },
                     { nama: "Deni Setiawan", ui: "Deni Setiawan", alias: ["deni", "dondeng", "gondeng"] },
                     { nama: "Dwi Hartanto", ui: "Dwi Hartanto", alias: ["dwi"] },
-                    { nama: "Fajri Muhammad Iqbal", ui: "FM Iqbal", alias: ["fajri", "iqbal"] },
+                    { nama: "Fajri Muhammad Iqbal", ui: "Iqbal", alias: ["fajri", "iqbal"] },
                     { nama: "Febriana Ardianita", ui: "Febriana Ardianita", alias: ["febriana", "febri"] },
                     { nama: "Ginanjar Wahyu Rhomadona Hadi Putro", ui: "Ginanjar WR HP", alias: ["ginanjar", "dona", "barla"] },
                     { nama: "Heri Susanto", ui: "Heri Susanto", alias: ["heri", "klepon"] },
                     { nama: "Intan Dyah Anggraini", ui: "Intan Dyah A", alias: ["intan", "dyah"] },
-                    { nama: "Khoirul Annam Hidayat", ui: "K Annam Hidayat", alias: ["khoirul", "annam", "anam"] },
+                    { nama: "Khoirul Annam Hidayat", ui: "Annam Hidayat", alias: ["khoirul", "annam", "anam"] },
                     { nama: "Marganingtyas", ui: "Marganingtyas", alias: ["marga", "tyas", "ganik"] },
-                    { nama: "Mikayla Putri Adista", ui: "Mikayla Putri A", alias: ["mikayla", "putri", "kayla"] },
-                    { nama: "Muhammad Bagas Rio Ferdinan", ui: "M Bagas Rio F", alias: ["bagas", "rio", "ferdinan", "gundul"] },
-                    { nama: "Muhammad Davy Sunda Pasa", ui: "M Davy Sunda Pasa", alias: ["davy", "sunda"] },
-                    { nama: "Muhammad Faiz Ramadhani", ui: "M Faiz R", alias: ["faiz", "ramadhani", "ramadhan"] },
-                    { nama: "Muhammad Ramadhika Adi Nugroho", ui: "M Ramadhika AN", alias: ["ramadhika", "dhika", "rama"] },
-                    { nama: "Muhammad Revan Guntur Nur Cahyo", ui: "M Revan GNC", alias: ["revan", "guntur"] },
-                    { nama: "Muhammad Sholihin", ui: "M Sholihin", alias: ["sholihin", "solikin", "lemu", "boby"] },
-                    { nama: "Muhammad Syaiful Anwar", ui: "M Syaiful Anwar", alias: ["syaiful", "anwar", "ipul", "gus ipul"] },
-                    { nama: "Muhammad Syirojuddin", ui: "M Syirojuddin", alias: ["syirojuddin", "udin"] },
+                    { nama: "Mikayla Putri Adista", ui: "Kayla Putri A", alias: ["mikayla", "putri", "kayla"] },
+                    { nama: "Muhammad Bagas Rio Ferdinan", ui: "Bagas Rio F", alias: ["bagas", "rio", "ferdinan", "gundul"] },
+                    { nama: "Muhammad Davy Sunda Pasa", ui: "Davy Sunda Pasa", alias: ["davy", "sunda"] },
+                    { nama: "Muhammad Faiz Ramadhani", ui: "Faiz Ramadhani", alias: ["faiz", "ramadhani", "ramadhan"] },
+                    { nama: "Muhammad Ramadhika Adi Nugroho", ui: "Ramadhika AN", alias: ["ramadhika", "dhika", "rama"] },
+                    { nama: "Muhammad Revan Guntur Nur Cahyo", ui: "Revan GNC", alias: ["revan", "guntur"] },
+                    { nama: "Muhammad Sholihin", ui: "Sholihin", alias: ["sholihin", "solikin", "lemu", "boby"] },
+                    { nama: "Muhammad Syaiful Anwar", ui: "Syaiful Anwar", alias: ["syaiful", "anwar", "ipul", "gus ipul"] },
+                    { nama: "Muhammad Syirojuddin", ui: "Syirojuddin", alias: ["syirojuddin", "udin"] },
                     { nama: "Nathania Az-Zahra", ui: "Nathania Az-Z", alias: ["natania", "nathan", "natan", "az-zahra", "zahra"] },
                     { nama: "Naufal Yudhistira Gibran Alfaro", ui: "Naufal YGA", alias: ["naufal", "yudhistira", "gibran", "gendis"] },
-                    { nama: "Nesya Aulia Kasih", ui: "NA Kasih", alias: ["nesya", "kasih"] },
+                    { nama: "Nesya Aulia Kasih", ui: "Kasih", alias: ["nesya", "kasih"] },
                     { nama: "Nila Rizki Permatasari", ui: "Nila RP", alias: ["nila", "rizki"] },
-                    { nama: "Oktavian Krisna Saputra", ui: "O Krisna S", alias: ["oktavian", "krisna", "gareng"] },
+                    { nama: "Oktavian Krisna Saputra", ui: "Krisna S", alias: ["oktavian", "krisna", "gareng"] },
                     { nama: "Purwanto", ui: "Purwanto", alias: ["purwanto", "pur", "ipur", "rw"] },
                     { nama: "Ria Nur Setianingsih", ui: "Ria Nur S", alias: ["ria", "nur"] },
                     { nama: "Salsabila Indah Ramadhani", ui: "Salsabila IR", alias: ["salsabila", "salsa", "indah"] },
@@ -13913,46 +14135,74 @@ if (tipe === 'KEG') {
                     { nama: "Utami", ui: "Utami", alias: ["utami"] },
                     { nama: "Viviana Rahmawati", ui: "Viviana R", alias: ["viviana", "vivi"] },
                     { nama: "Widya Purnamasari", ui: "Widya P", alias: ["widya", "widi"] },
-                    { nama: "Yanuar Nur Irwansyah", ui: "Yanuar Nur Irwansyah", alias: ["yanuar", "iwan", "ariel"] },
+                    { nama: "Yanuar Nur Irwansyah", ui: "Yanuar NI", alias: ["yanuar", "iwan", "ariel"] },
                     { nama: "Yasir Muhammad Arif", ui: "Yasir M Arif", alias: ["yasir", "arif"] },
                     { nama: "Zulfikar Yanuar Aji Saputra", ui: "Zulfikar YAS", alias: ["zulfikar", "yanuar", "aji", "kentur"] }
                 ];
 
-                // 1. JARING SAPAAN DASAR
-                if (/^(halo|hai|hi|pagi|siang|sore|malam|assalamualaikum|test|tes|ping|oy|uy)$/i.test(cleanLower)) {
-                    let sapaan = "";
-                    if (cleanLower.includes('assalamualaikum')) {
-                        sapaan = "Waalaikumsalam wr. wb. Halo! Ada yang bisa NAVA bantu hari ini?";
-                    } else {
-                        if (cRoleLokal === 'warga') {
-                            sapaan = "Halo Bpk/Ibu Warga RT 05! Selamat datang di Portal NAVASENA. Ada yang bisa NAVA bantu hari ini?";
-                        } else if (cRoleLokal === 'anggota') {
-                            let namaDepan = "Anggota";
-                            if (cUidLokal) {
-                                let ag = state.anggota.find(a => a.id === cUidLokal);
-                                if (ag) namaDepan = ag.nama.split(' ')[0];
-                            }
-                            sapaan = `Halo ${esc(namaDepan)}! Senang melihat Anda hari ini. Ada yang bisa NAVA bantu?`;
-                        } else {
-                            sapaan = "Halo Min! NAVA siap bertugas. Ada yang bisa NAVA bantu?";
-                        }
+                // --- THE ZERO-TOKEN LOCAL SHIELD (SAPAAN, KABAR, PUJIAN, KELUHAN) ---
+                let userWordCount = cleanLower.split(/\s+/).length;
+                let isSystemQuery = /(kas|uang|saldo|bayar|tunggakan|iuran|program|acara|kegiatan|profil|xp|poin|pangkat|rekening|wa|nomor|bantuan|cara|bagaimana|siapa|apa|cek|lunas|minus|darurat|operasional|sosial|donasi|sponsor)/i.test(cleanLower);
+                
+                // Jaring aktif HANYA jika bukan pertanyaan sistem dan panjang kalimat pendek (< 8 kata)
+                if (!isSystemQuery && userWordCount <= 8) {
+                    let quickReply = "";
+                    let isAssalam = /(assalamu|salam|samlekom)/i.test(cleanLower);
+                    
+                    let activeNama = "Kak";
+                    if (cRoleLokal === 'warga') activeNama = "Bapak/Ibu Warga";
+                    else if (cRoleLokal === 'anggota' && cUidLokal) {
+                        let ag = state.anggota.find(a => a.id === cUidLokal);
+                        if (ag) activeNama = ag.nama.split(' ')[0];
+                    } else if (isAdminLokal) activeNama = "Min";
+
+                    if (/(pinter|keren|hebat|cakep|mantap|mbois|luar biasa|cemerlang|cerdik|asyik|good|bagus|top|cantik|ganteng|kece)/i.test(cleanLower)) {
+                        let rep = ["Wah, makasih pujiannya! Ini semua berkat Pengurus Karang Taruna yang merancang NAVA. Btw, ada yang bisa dibantu?", "Pujiannya bikin sistem NAVA berbunga-bunga nih! 🌸 Ada info kas yang mau dicek, " + activeNama + "?", "Hehehe, NAVA kan asisten kebanggaan Karang Taruna NAVASENA! Ada yang mau ditanyain?"];
+                        quickReply = rep[Math.floor(Math.random() * rep.length)];
+                    } 
+                    else if (/(jelek|bodoh|goblok|tolol|lamban|lemot|error|ngawur|ruwet|pusing|payah|cacat|anj|babi|bangsat)/i.test(cleanLower)) {
+                        quickReply = "Waduh, mohon maaf banget ya " + activeNama + " kalau sistem NAVA dirasa kurang maksimal atau bikin bingung. 😔 Kalau ada kendala data, mending langsung colek Bendahara Karang Taruna aja biar dibantu cek manual!";
+                    }
+                    else if (/(apa kabar|gimana kabar|sehat|lagi ngapain|sibuk|udah makan|capek|piye)/i.test(cleanLower)) {
+                        let rep = ["Kabar NAVA super baik dong! NAVA lagi *standby* terus nih pantau brankas Karang Taruna. " + activeNama + " sendiri gimana kabarnya?", "Sebagai AI, NAVA nggak pernah capek apalagi laper! 🤖 Terus pantau transparansi kas kita dong. Ada yang mau dicek?", "Alhamdulillah kabar NAVA luar biasa. Gimana harinya " + activeNama + "? Ada info kas yang mau NAVA cariin?"];
+                        quickReply = rep[Math.floor(Math.random() * rep.length)];
+                    }
+                    else if (/(terima kasih|makasih|thanks|tq|suwun|ok|oke|sip|mantap|baik|siap|nice|yowedis|yaudah|bye|dadah|pamit|sampai jumpa)/i.test(cleanLower)) {
+                        let rep = ["Sama-sama " + activeNama + "! Jangan sungkan panggil NAVA lagi ya kalau butuh apa-apa. 👋", "Siap laksanakan! Selamat melanjutkan aktivitas kembali.", "Anytime! NAVA selalu *standby* 24/7 di sini. 🚀"];
+                        quickReply = rep[Math.floor(Math.random() * rep.length)];
+                    }
+                    else if (/(halo|hai|helo|hi|oy|uy|ping|p|punten|permisi|pagi|siang|sore|malam|tes|test|nava)/i.test(cleanLower)) {
+                        if (isAssalam) quickReply = "Waalaikumsalam wr. wb. Halo " + activeNama + "! Ada yang bisa NAVA bantu hari ini?";
+                        else quickReply = "Halo " + activeNama + "! Senang melihat Anda. Ada yang bisa NAVA bantu atau mau cek info kas Karang Taruna?";
                     }
 
-                    setTimeout(() => {
-                        appendAIMessage(sapaan, 'ai');
-                        isAITyping = false;
-                        document.getElementById('btn-send-ai').style.opacity = '1';
-                    }, 500); 
-                    return;
+                    if (quickReply !== "") {
+                        let typingId = 'typing-' + Date.now();
+                        document.getElementById('ai-chat-history').insertAdjacentHTML('beforeend', `<div id="${typingId}" class="msg-bubble msg-ai"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`);
+                        document.getElementById('ai-chat-history').scrollTop = document.getElementById('ai-chat-history').scrollHeight;
+
+                        setTimeout(() => {
+                            let tb = document.getElementById(typingId); if (tb) tb.remove();
+                            appendAIMessage(quickReply, 'ai');
+                            isAITyping = false;
+                            document.getElementById('btn-send-ai').style.opacity = '1';
+                        }, 2000); 
+                        return;
+                    }
                 }
                 
                 // 2. JARING UCAPAN TERIMA KASIH (ANTI-EMOJI)
                 if (/^(terima kasih|makasih|thanks|ok|oke|sip|mantap|baik|siap|nice)$/i.test(cleanLower)) {
+                    let typingId = 'typing-' + Date.now();
+                    document.getElementById('ai-chat-history').insertAdjacentHTML('beforeend', `<div id="${typingId}" class="msg-bubble msg-ai"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`);
+                    document.getElementById('ai-chat-history').scrollTop = document.getElementById('ai-chat-history').scrollHeight;
+
                     setTimeout(() => {
+                        let tb = document.getElementById(typingId); if (tb) tb.remove();
                         appendAIMessage("Sama-sama! Jangan ragu memanggil NAVA jika butuh bantuan lagi ya.", 'ai');
                         isAITyping = false;
                         document.getElementById('btn-send-ai').style.opacity = '1';
-                    }, 500);
+                    }, 5000);
                     return;
                 }
 
@@ -13963,6 +14213,11 @@ if (tipe === 'KEG') {
                 // =========================================================================
                 let isMatched = false;
                 let localReply = "";
+                
+                // [SURGICAL FIX: THE COMPLEXITY SHIELD]
+                // Jika pertanyaan memiliki lebih dari 12 kata, ini adalah "Deep Audit / Analisis".
+                // Jaring template lokal akan dimatikan agar diteruskan ke Otak LLM / Shadow Queue.
+                let isComplexQuery = text.trim().split(/\s+/).length > 12;
 
                 // A. KATEGORI IDENTITAS ARSITEK & SISTEM (THE CREATOR MATRIX)
                 if (/(pembuat|pencipta|creator|kreator|penggagas|pencetus|perancang|developer|dev|bikin|siapa yang buat|arsitek|programmer|bapak aplikasi|ide siapa|pemrakarsa|fambarla|barla)/i.test(cleanLower)) {
@@ -13971,7 +14226,7 @@ if (tipe === 'KEG') {
                 }
 
                 // B. KATEGORI MAKRO KEUANGAN & ORGANISASI
-                if (!isMatched) {
+                if (!isMatched && !isComplexQuery) {
                     if (/(total kas|saldo global|uang kas organisasi|sisa uang kita|saldo|sisa kas|total uang|duit kas|kekayaan|sisa dana|kas sekarang|pegangan uang)/i.test(cleanLower)) {
                         let tKasVal = document.getElementById('dash-saldo') ? document.getElementById('dash-saldo').innerText : 'Rp 0';
                         localReply = `Pengecekan sistem menunjukkan kekayaan bersih (saldo global) Karang Taruna NAVASENA saat ini adalah **${tKasVal}**. Angka ini merepresentasikan total uang riil yang tersedia di brankas maupun rekening.`;
@@ -14236,7 +14491,7 @@ if (tipe === 'KEG') {
                 }
 
                 // C. KATEGORI GRANULAR DATA SPESIFIK (MENCARI NAMA / DATA PRIBADI)
-                if (!isMatched) {
+                if (!isMatched && !isComplexQuery) {
                     let isSelfQuery = /(saya|aku|ku)$/i.test(cleanLower);
                     let targetId = null;
                     let targetNameText = "";
@@ -14263,9 +14518,10 @@ if (tipe === 'KEG') {
                             queryNama = queryNama.replace(/\bm\.\s*|\bm\s+|\bmuh\s+/gi, 'muhammad ')
                                                  .replace(/\bk\.\s*|\bk\s+/gi, 'khoirul ');
 
-                            // LAPISAN 3: PHONETIC EQUALIZER
+                            // LAPIS 3: PHONETIC EQUALIZER
                             const cuciFonetik = (str) => {
                                 return str.replace(/h/g, '') // Hancurkan 'H' siluman
+                                          .replace(/[aiueo]/g, '') // THE SKELETON CORE: Musnahkan huruf vokal
                                           .replace(/v|f|p/g, 'f') // Lebur V, F, P
                                           .replace(/z|s|j/g, 's') // Lebur Z, S, J
                                           .replace(/c|k|q/g, 'k') // Lebur C, K, Q
@@ -14290,8 +14546,9 @@ if (tipe === 'KEG') {
                             };
 
                             let matchedTarget = null;
-                            let userWords = queryNama.split(/\s+/).filter(w => w.length >= 3);
-                            let userWordsPhonetic = qPhonetic.split(/\s+/).filter(w => w.length >= 3);
+                            // SURGICAL FIX: Turunkan filter minimal menjadi 2 karakter untuk memfasilitasi inisial
+                            let userWords = queryNama.split(/\s+/).filter(w => w.length >= 2);
+                            let userWordsPhonetic = qPhonetic.split(/\s+/).filter(w => w.length >= 2);
 
                             for (let master of NAVA_ALIAS_DB) {
                                 let isMatch = false;
@@ -14312,11 +14569,13 @@ if (tipe === 'KEG') {
                                             let dW = dbWords[j]; let dWp = dbWordsPhonetic[j];
                                             let maxMeleset = uW.length <= 3 ? 0 : (uW.length <= 6 ? 1 : 2);
                                             
-                                            if (uW.length >= 3 && dW.length >= 3) {
-                                                if (uW === dW || uWp === dWp || dW.startsWith(uW) || dWp.startsWith(uWp)) {
+                                            // SURGICAL FIX: Turunkan syarat minimal evaluasi kecocokan menjadi 2 karakter
+                                            if (uW.length >= 2 && dW.length >= 2) {
+                                                if (uW === dW || dW.startsWith(uW)) {
                                                     isMatch = true; break;
                                                 }
-                                                if (levDist(uW, dW) <= maxMeleset || levDist(uWp, dWp) <= maxMeleset) {
+                                                // SURGICAL FIX: Levenshtein distance pada string fonetik DIAMPUTASI. Hanya berlakukan Levenshtein pada string asli.
+                                                if (levDist(uW, dW) <= maxMeleset) {
                                                     isMatch = true; break;
                                                 }
                                             }
@@ -14326,7 +14585,13 @@ if (tipe === 'KEG') {
                                 }
 
                                 if (isMatch) {
-                                    let agDb = state.anggota.find(a => String(a.nama || '').toLowerCase() === master.nama.toLowerCase() || String(a.nama || '').toLowerCase().includes(master.nama.split(' ')[0].toLowerCase()));
+                                    // SURGICAL FIX: The Identity Bridge Correction (Alias Extractor)
+                                    // Sinkronisasi mutlak: Cocokkan a.nama dengan master.nama, master.ui, ATAU dengan daftar alias yang sudah terdefinisi
+                                    let agDb = state.anggota.find(a => 
+                                        String(a.nama || '').toLowerCase() === String(master.nama || '').toLowerCase() || 
+                                        (master.ui && String(a.nama || '').toLowerCase() === String(master.ui || '').toLowerCase()) ||
+                                        (master.alias && master.alias.some(al => String(a.nama || '').toLowerCase().includes(al.toLowerCase())))
+                                    );
                                     if (agDb) {
                                         matchedTarget = agDb;
                                         break;
@@ -14454,11 +14719,16 @@ if (tipe === 'KEG') {
 
                 // JIKA COCOK DENGAN TEMPLATE OMNI-SEMANTIC, LANGSUNG MUNTAHKAN (BYPASS API GEMINI)
                 if (isMatched && localReply !== "") {
+                    let typingId = 'typing-' + Date.now();
+                    document.getElementById('ai-chat-history').insertAdjacentHTML('beforeend', `<div id="${typingId}" class="msg-bubble msg-ai"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`);
+                    document.getElementById('ai-chat-history').scrollTop = document.getElementById('ai-chat-history').scrollHeight;
+
                     setTimeout(() => {
+                        let tb = document.getElementById(typingId); if (tb) tb.remove();
                         appendAIMessage(localReply, 'ai');
                         isAITyping = false;
                         document.getElementById('btn-send-ai').style.opacity = '1';
-                    }, 500);
+                    }, 5000);
                     return; 
                 }
 
@@ -14529,7 +14799,8 @@ if (tipe === 'KEG') {
                     // INJEKSI KOGNITIF: THE SEMANTIC PAYLOAD BALANCER
                     let panduanSistem = "Tidak di-trigger";
                     let hukumSistem = "Tidak di-trigger";
-                    let cleanSemanticInput = text.toLowerCase().replace(/[^\w\s]/gi, '');
+                    // [SURGICAL FIX] Sinkronisasi variabel ke hulu untuk menangkal Leet Speak
+                    let cleanSemanticInput = cleanLower;
                     
                     if (/(cara|panduan|tombol|menu|bingung|bagaimana|bantu|dimana|letak|fungsi|lihat|kta)/i.test(cleanSemanticInput)) {
                         if (cRole === 'warga') {
@@ -14548,18 +14819,50 @@ if (tipe === 'KEG') {
 
                     // [THE JIT RAM CACHE INTERCEPTOR: SEMANTIC QNA BYPASS]
                     let isHashDirty = localStorage.getItem('nav_unsynced') === 'true';
+                    
+                    // SURGICAL FIX: Prioritas Memori (Cache) Mutlak. 
+                    // Pengecekan Cache Lokal WAJIB dieksekusi terlepas dari panjang pertanyaan.
                     if (!isHashDirty && state.nava_memory && state.nava_memory.length > 0) {
                         let cachedAnswer = null;
                         for (let mem of state.nava_memory) {
                             if (mem.tipe_data === 'SEMANTIC_CACHE' && mem.kata_kunci) {
                                 let keywords = String(mem.kata_kunci).toLowerCase().split(',').map(k => k.trim());
-                                if (keywords.some(k => k.length > 3 && cleanSemanticInput.includes(k.replace(/[^\w\s]/gi, '')))) {
+                                
+                                // THE GREEDY CATCH-ALL ANNIHILATOR:
+                                // Mencegah kata generik ('kas', 'cek') membajak seluruh pertanyaan pendek.
+                                // Wajib mengandung frasa dominan/panjang (>= 5 huruf) agar Cache aktif.
+                                let validKeywords = keywords.filter(k => k.length >= 5);
+                                let isMatch = false;
+
+                                if (validKeywords.length > 0) {
+                                    isMatch = validKeywords.some(k => cleanSemanticInput.includes(k.replace(/[^\w\s]/gi, '')));
+                                } else {
+                                    // Fallback jika keyword dari AI semuanya pendek
+                                    isMatch = keywords.some(k => k.length >= 3 && cleanSemanticInput.includes(k.replace(/[^\w\s]/gi, '')));
+                                }
+
+                                if (isMatch) {
                                     // THE DYNAMIC RBAC SHIELD (AI GOVERNANCE)
                                     let acl = mem.access_level || 'SEMUA';
                                     if (acl === 'ADMIN_SAJA' && !isAdminLokal) continue;
                                     if (acl === 'ANGGOTA' && cRoleLokal === 'warga') continue;
                                     
                                     cachedAnswer = mem.payload;
+
+                                    // [SURGICAL FIX: DYNAMIC PERSONA INJECTOR (ANTI-STATIC LEAK)]
+                                    // Menghapus sapaan permanen di memori cache dan menggantinya dengan sapaan adaptif milik user yang sedang aktif.
+                                    let activeName = cRole === 'warga' ? 'Bapak/Ibu Warga' : (cName ? cName.split(' ')[0] : 'Kak');
+                                    
+                                    // 1. Bedah Regex untuk sapaan pembuka kalimat (Halo Pak Ginanjar! -> Halo Bapak/Ibu Warga!)
+                                    cachedAnswer = cachedAnswer.replace(/^(Halo|Hai|Selamat [a-z]+)[^!\.\?\n]+[!\.\?]\s*/i, `Halo ${esc(activeName)}! `);
+                                    
+                                    // 2. Sapu bersih penyebutan nama pengirim asli yang membatu di tengah paragraf
+                                    if (mem.pengirim && mem.pengirim.trim() !== '' && mem.pengirim !== 'Warga/Anonim') {
+                                        let namaPengirim = mem.pengirim.split(' ')[0];
+                                        let regexPengirim = new RegExp(`(Pak |Bu |Kak |Mas |Mbak )?${namaPengirim}`, 'gi');
+                                        cachedAnswer = cachedAnswer.replace(regexPengirim, activeName);
+                                    }
+                                    
                                     break;
                                 }
                             }
@@ -14571,7 +14874,7 @@ if (tipe === 'KEG') {
                                 appendAIMessage(cachedAnswer, 'ai');
                                 isAITyping = false;
                                 document.getElementById('btn-send-ai').style.opacity = '1';
-                            }, 600);
+                            }, 5000);
                             return; // BYPASS LLM GEMINI MUTLAK (0 Token, 0 Latency)
                         }
                     }
@@ -14667,18 +14970,22 @@ if (tipe === 'KEG') {
                     let trigTalang = [];
 
                     if (typeof state !== 'undefined' && state.anggota) {
+
                         // LAPIS 3: THE DEEP-DIVE RADAR V7.0 (Omni-Phonetic & Alias Extractor)
-                        let cleanInput = text.toLowerCase().replace(/[^\w\s]/gi, '');
+                        // [SURGICAL FIX] Sinkronisasi variabel radar agar mewarisi antibodi Leet Speak
+                        let cleanInput = cleanLower;
                         
                         // Lapis 2: Dekoder Singkatan untuk Radar Multi
                         cleanInput = cleanInput.replace(/\bm\.\s*|\bm\s+|\bmuh\s+/gi, 'muhammad ')
                                                .replace(/\bk\.\s*|\bk\s+/gi, 'khoirul ');
                                                
-                        let userWords = cleanInput.split(/\s+/).filter(w => w.length >= 3);
+                        // SURGICAL FIX: Turunkan filter minimal menjadi 2 karakter untuk memfasilitasi inisial ganda
+                        let userWords = cleanInput.split(/\s+/).filter(w => w.length >= 2);
 
                         // Lapis 1 & 3: Pencuci Fonetik
                         const cuciFonetikRadar = (str) => {
                             return str.replace(/h/g, '') 
+                                      .replace(/[aiueo]/g, '') // THE SKELETON CORE: Musnahkan huruf vokal
                                       .replace(/v|f|p/g, 'f') 
                                       .replace(/z|s|j/g, 's') 
                                       .replace(/c|k|q/g, 'k') 
@@ -14723,12 +15030,12 @@ if (tipe === 'KEG') {
                         let sourceAnggota = typeof NAVA_ALIAS_DB !== 'undefined' ? NAVA_ALIAS_DB : state.anggota;
 
                         sourceAnggota.forEach(m => {
-                            // SURGICAL FIX: The Identity Bridge Correction
-                            // Sinkronisasi mutlak: Cocokkan a.nama dengan m.nama (Master), ATAU m.ui (Singkatan UI), ATAU pemotongan kata pertama
+                            // SURGICAL FIX: The Identity Bridge Correction (Alias Extractor)
+                            // Sinkronisasi mutlak: Cocokkan a.nama dengan m.nama, m.ui, ATAU dengan daftar alias yang sudah terdefinisi
                             let agAsli = state.anggota.find(a => 
                                 String(a.nama || '').toLowerCase() === String(m.nama || '').toLowerCase() || 
                                 (m.ui && String(a.nama || '').toLowerCase() === String(m.ui || '').toLowerCase()) ||
-                                String(a.nama || '').toLowerCase().includes(String(m.nama || '').split(' ')[0].toLowerCase())
+                                (m.alias && m.alias.some(al => String(a.nama || '').toLowerCase().includes(al.toLowerCase())))
                             );
                             
                             if (agAsli) {
@@ -14753,14 +15060,16 @@ if (tipe === 'KEG') {
 
                                     for (let j = 0; j < dbWords.length; j++) {
                                         let dW = dbWords[j]; let dWp = dbWordsPhonetic[j];
-                                        if (dW.length < 3) continue;
+                                        // SURGICAL FIX: Izinkan penelusuran pada inisial nama dengan batas bawah 2 karakter
+                                        if (dW.length < 2) continue;
                                         
                                         let maxMeleset = uW.length <= 3 ? 0 : (uW.length <= 6 ? 1 : 2);
                                         
                                         if (uW === dW || uWp === dWp || dW.startsWith(uW) || dWp.startsWith(uWp)) {
                                             isMatch = true; break;
                                         }
-                                        if (levDistRadar(uW, dW) <= maxMeleset || levDistRadar(uWp, dWp) <= maxMeleset) {
+                                        // SURGICAL FIX: Levenshtein distance pada string fonetik DIAMPUTASI. Hanya berlakukan Levenshtein pada string asli.
+                                        if (levDistRadar(uW, dW) <= maxMeleset) {
                                             isMatch = true; break;
                                         }
                                     }
@@ -14909,7 +15218,7 @@ if (tipe === 'KEG') {
                     if (hiddenDirective === 'AUDIT_MODE') {
                         // Ekstraksi murni 150 transaksi aktif terakhir untuk dianalisa LLM, buang kolom bertele-tele
                         let rawAuditData = state.trx.filter(t => !t.is_deleted).slice(0, 150).map(t => `ID:${t.id}|Tipe:${t.tipe}|Nom:${t.nom_final}|Status:${t.status}|Ket:${esc(t.ket).substring(0, 40)}`).join('\n');
-                        microDirective += `\n\n[DIREKTIF_AUDITOR: Anda beralih ke Mode Auditor Forensik. Analisis matriks data berikut:\n<BEGIN_DATA>\n${rawAuditData}\n<END_DATA>\n\nTUGAS ANDA: Cari anomali (1. Status pending/uang muka yang masih menggantung. 2. Talangan yang belum dilunasi. 3. Duplikasi aneh/double-entry berulang dengan nominal yang sama). Jawab langsung dengan daftar temuan error/peringatan secara tegas dan profesional!]`;
+                        microDirective += `\n\n[DIREKTIF_AUDITOR: Anda beralih ke Mode Auditor Forensik. Analisis matriks data berikut:\n<BEGIN_DATA>\n${rawAuditData}\n<END_DATA>\n\nTUGAS ANDA: Pindai anomali berikut: 1. Transaksi 'pending' (Uang Muka) menggantung. 2. Transaksi 'talangan' belum lunas. 3. Duplikasi ID/Nominal mencurigakan. HUKUM MUTLAK: Anda WAJIB menjawab menggunakan format Bullet Points. JANGAN membuat paragraf narasi atau ringkasan surplus/defisit. Jika data 100% bersih tanpa anomali, jawab tegas: "- **[CLEAR]** Tidak ditemukan anomali. Seluruh siklus akuntansi, uang muka, dan talangan berstatus aman."]`;
                     }
 
                     // EKSTRAKSI STATISTIK GLOBAL (THE HYDRATION PROTOCOL UNTUK MENCEGAH DATA STARVATION)
@@ -14926,23 +15235,69 @@ if (tipe === 'KEG') {
                     let aiPrivacyRules = getSetting('ai_privacy_rules', 'Standar.');
                     
                     let roleFirewall = (cRole === 'warga' || cRole === 'anggota') 
-                        ? "FIREWALL AKTIF: User adalah Warga/Anggota (Read-Only). JANGAN berikan rahasia dapur aplikasi (kode, database, API, logika internal). Jawab seputar UI dan transparansi kas saja. Jika ditanya cara kerja sistem, tolak dengan profesional.\n[DIREKTIF_HUKUM_ADMIN]: " + aiPrivacyRules
-                        : "GOD-MODE AKTIF: User adalah Admin. Anda adalah Co-Pilot Aplikasi. Berikan otoritas penuh untuk membahas arsitektur, forensik audit, dan tata kelola teknis mendalam dari ujung rambut hingga kaki.";
+                        ? "FIREWALL AKTIF: User adalah Warga/Anggota (Read-Only). Anda sedang berbicara dengan pihak luar (Donatur/Pengawas). JANGAN gunakan istilah 'Kas RT' atau 'Acara RT'. Selalu jelaskan bahwa ini kas murni Karang Taruna NAVASENA. Jawab seputar UI dan transparansi kas saja. Jika ditanya rahasia dapur sistem, tolak dengan profesional.\n[DIREKTIF_HUKUM_ADMIN]: " + aiPrivacyRules
+                        : "GOD-MODE AKTIF: User adalah Admin/Pengurus Karang Taruna. Anda adalah Co-Pilot Aplikasi. Berikan otoritas penuh untuk membahas arsitektur, forensik audit, dan tata kelola teknis mendalam dari ujung rambut hingga kaki.";
                     
-                    let domainLock = `\n\n[DIREKTIF_MUTLAK: 1. Otoritas penuh Anda HANYA untuk Portal NAVASENA RT 05. 2. JIKA DITANYA DI LUAR TOPIK NAVASENA (Misal: resep, sejarah umum, tokoh dunia, coding di luar app, cuaca), WAJIB TOLAK DENGAN TEMPLATE BAKU INI: 'Mohon maaf, sebagai Asisten Virtual Finansial NAVASENA, wewenang dan fokus operasional saya dibatasi secara eksklusif pada tata kelola kas, transparansi organisasi, dan operasional Portal NAVASENA RT 05. Saya tidak dapat memproses permintaan informasi di luar ruang lingkup tersebut.' 3. ANTI-EMOJI MUTLAK, gunakan Bold/Italic saja. 4. ${roleFirewall}]`;
+                    let domainLock = `\n\n[DIREKTIF_MUTLAK: 1. Otoritas penuh Anda HANYA untuk Portal Karang Taruna NAVASENA. 2. JIKA DITANYA DI LUAR TOPIK NAVASENA (Misal: resep, sejarah, coding di luar app, cuaca), WAJIB TOLAK DENGAN TEMPLATE BAKU INI: 'Mohon maaf, sebagai Asisten Virtual Finansial NAVASENA, wewenang saya dibatasi secara eksklusif pada tata kelola kas dan transparansi Karang Taruna NAVASENA. Saya tidak dapat memproses permintaan tersebut.' 3. ANTI-EMOJI MUTLAK, gunakan Bold/Italic saja. 4. DILARANG KERAS menyebut 'Kas RT' atau 'Bendahara RT'. Organisasi ini murni Karang Taruna. 5. ${roleFirewall}]`;
 
                     chatContext += "User: " + text + microDirective + shadowData + domainLock + "\nNAVA: ";
 
-                    // [SURGICAL FIX: EXTREME COGNITIVE TOLERANCE EXTENSION] 
-                    // Memperlebar pipa kesabaran Klien menjadi 120 Detik (2 Menit) mutlak, atau sesuai Custom Timeout Admin.
-                    // Menampung latensi 'Cold Start' Gemini, antrean High Demand server Google, dan proses berpikir kompleks.
+                    // [SURGICAL FIX: THE ASYNC ENFORCER (SHADOW QUEUE MUTLAK UNTUK WARGA/ANGGOTA)]
+                    if (!isAdminLokal) {
+                        let dailyCount = state.nava_memory.filter(m => m.tipe_data === 'LEARNING_QUEUE' && m.access_level === 'PENDING').length;
+                        let namaPanggilan = cName ? cName.split(' ')[0] : 'Kakak';
+                        let maxGlobalQueue = 30; // Batas Kuota Global Warga
+                        
+                        if (dailyCount < maxGlobalQueue) {
+                            let shadowId = genID('MEM');
+                            let qMem = { id: shadowId, tipe_data: 'LEARNING_QUEUE', kata_kunci: cleanSemanticInput.substring(0, 40), payload: text, access_level: 'PENDING', last_sync: Date.now(), pengirim: cName };
+                            
+                            saveStore('nava_memory', qMem).then(() => {
+                                state.nava_memory.push(qMem);
+                                localStorage.setItem('nav_unsynced', 'true');
+                                if (navigator.onLine && typeof syncToCloud === 'function') {
+                                    // [SURGICAL FIX] Tangkap hasil Async Mode Siluman dan tembakkan Toast Kustom
+                                    setTimeout(async () => {
+                                        let syncResult = await syncToCloud(true);
+                                        if (syncResult && typeof showToast === 'function') {
+                                            showToast(" NAVA sudah mencatat'PR'nya!");
+                                        }
+                                    }, 2000);
+                                }
+                            });
+                        }                       
+
+                        setTimeout(() => {
+                            let typingBubble = document.getElementById(typingId);
+                            if (typingBubble) typingBubble.remove();
+                            
+                            if (dailyCount < maxGlobalQueue) {
+                                // [SURGICAL FIX: PERSONA "NAVA ANAK SD"]
+                                appendAIMessage(`Ampun ${esc(namaPanggilan)}... ditanya pertanyaan seberat ini, otak NAVA langsung nge-blank! Maklum, ilmu NAVA kan ibaratnya masih anak SD.\n\nBiar NAVA nggak salah jawab, pertanyaan ini NAVA catat dulu di buku PR ya. Beri NAVA waktu buat ngerjain 'PR' ini nanti malam.\n\nBesok coba tagih lagi jawabannya ke NAVA, pasti langsung NAVA jawab dengan lunas dan akurat!`, 'ai');
+                            } else {
+                                // Pesan jika kuota PR (Shadow Queue) sudah penuh
+                                appendAIMessage(`Duh ${esc(namaPanggilan)}, antrean PR NAVA dari seluruh warga hari ini udah penuh mencapai batas maksimal (${maxGlobalQueue} pertanyaan)!\n\nBeri NAVA dan Pengurus istirahat dulu buat jawab semuanya ya, silakan tanyakan lagi hal ini besok.`, 'ai');
+                            }
+                            
+                            isAITyping = false;
+                            document.getElementById('btn-send-ai').style.opacity = '1';
+                        }, 5000);
+                        
+                        // HENTIKAN EKSEKUSI. Warga tidak diizinkan memanggil API Gemini Real-time!
+                        return;
+                    }
+
+                    // =========================================================================
+                    // GOD-MODE BYPASS: EKSEKUSI DI BAWAH INI HANYA BERLAKU UNTUK ADMIN/BENDAHARA
+                    // =========================================================================
+
                     let customTimeout = parseInt(getSetting('fetch_timeout', 120000), 10) || 120000;
                     
                     let response = await fetchWithTimeout(CLOUD_API_URL.trim() + "?token=" + CLOUD_API_TOKEN + "&action=ask_ai", {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({ message: chatContext })
-                    }, 120000); // 120.000 ms Toleransi Kognitif LLM Mutlak
+                    }, customTimeout); 
                     
                     let textResponse = await response.text();
                     let resData;
@@ -14956,27 +15311,21 @@ if (tipe === 'KEG') {
                     if (typingBubble) typingBubble.remove();
                     
                     if (resData.status === 'success') {
-
                         appendAIMessage(resData.reply, 'ai');
                     } else {
-                        // [SURGICAL FIX: THE ERROR SANITIZER PROTOCOL (ANTI-GARBAGE EXPOSURE)]
                         let errMsg = String(resData.message || '');
                         let lowerErr = errMsg.toLowerCase();
 
                         if (lowerErr.includes('urlfetchapp') || lowerErr.includes('izin') || lowerErr.includes('permission')) {
-                            appendAIMessage("[SYS_WARN] **Sistem Keamanan Aktif:** Maaf, pengurus belum membuka izin akses (*Otorisasi Google*) agar saya bisa terhubung ke server utama. Mohon hubungi Bendahara untuk memperbarui izin skrip aplikasi ini.", 'ai');
+                            appendAIMessage("[SYS_WARN] **Sistem Keamanan Aktif:** Maaf, pengurus belum membuka izin akses (*Otorisasi Google*) agar saya bisa terhubung ke server utama. Mohon perbarui izin skrip aplikasi ini.", 'ai');
                         } else if (lowerErr.includes('high demand') || lowerErr.includes('overloaded') || lowerErr.includes('503')) {
-                            // Penanganan khusus jika Google API Gemini sedang antre panjang
-                            appendAIMessage("[SYS_WARN] **Server Sibuk:** Antrean satelit sedang penuh karena tingginya permintaan. Mohon tunggu beberapa detik dan coba tanyakan lagi ya.", 'ai');
+                            appendAIMessage("[SYS_WARN] **Server Sibuk:** Antrean satelit sedang penuh karena tingginya permintaan. Mohon tunggu beberapa detik dan coba tanyakan lagi.", 'ai');
                         } else if (lowerErr.includes('quota') || lowerErr.includes('exhausted') || lowerErr.includes('429')) {
-                            // Penanganan jika limit API Key habis
-                            appendAIMessage("[SYS_WARN] **Limit Akses:** Kuota komunikasi NAVA dengan satelit pusat telah habis untuk sementara waktu. Mohon lapor ke Bendahara.", 'ai');
+                            appendAIMessage("[SYS_WARN] **Limit Akses:** Kuota komunikasi NAVA dengan satelit pusat telah habis untuk sementara waktu.", 'ai');
                         } else if (lowerErr.includes('models/') || lowerErr.includes('error:') || lowerErr.includes('api key') || lowerErr.includes('html>')) {
-                            // BLOKIR MUTLAK: Sembunyikan kode mentah, path model, dan HTML dari UI Warga!
-                            console.error("NAVA AI Raw Server Error:", errMsg); // Tetap log di Inspect Element untuk keperluan Debug Developer
-                            appendAIMessage("[SYS_WARN] **Kendala Jaringan:** NAVA mengalami gangguan koneksi internal sementara ke server kecerdasan buatan. Silakan coba beberapa saat lagi.", 'ai');
+                            console.error("NAVA AI Raw Server Error:", errMsg);
+                            appendAIMessage("[SYS_WARN] **Kendala Jaringan:** NAVA mengalami gangguan koneksi internal sementara ke server kecerdasan buatan.", 'ai');
                         } else if (errMsg !== '') {
-                            // Hanya loloskan jika error berupa teks normal (bahasa manusia) yang memang sengaja dikirim dari Apps Script Anda
                             appendAIMessage("[SYS_WARN] **Informasi:** " + errMsg, 'ai');
                         } else {
                             appendAIMessage("[SYS_WARN] Maaf, saat ini saya sedang beristirahat atau mengalami kendala komunikasi. Silakan coba beberapa saat lagi.", 'ai');
@@ -14985,10 +15334,8 @@ if (tipe === 'KEG') {
                 } catch (e) {
                     let typingBubble = document.getElementById(typingId);
                     if (typingBubble) typingBubble.remove();
-                    // [SURGICAL FIX]: Diagnosa AbortError dari fetchWithTimeout akan dilontarkan secara natural
-
                     appendAIMessage("[SYS_ERR] **[DIAGNOSA KONEKSI]:** " + (e.name === 'AbortError' ? "Waktu koneksi habis (Timeout)." : e.message), 'ai');
-                }finally {
+                } finally {
                     isAITyping = false;
                     document.getElementById('btn-send-ai').style.opacity = '1';
                     
@@ -15000,8 +15347,9 @@ if (tipe === 'KEG') {
             function appendAIMessage(text, sender) {
                 let history = document.getElementById('ai-chat-history');
                 
-            // THE ABSOLUTE EMOJI ANNIHILATOR (COGNITIVE FIREWALL V2.1)
-            let textNoEmoji = text.replace(/[\u1000-\uFFFF]+/g, '').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
+            // THE ABSOLUTE EMOJI ANNIHILATOR (COGNITIVE FIREWALL V2.2 - SURGICAL FIX)
+            // Mencabut regex penghancur teks (\u1000-\uFFFF) agar format AI (bullet/angka) tidak terpenggal
+            let textNoEmoji = text.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
             try { textNoEmoji = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''); } catch(e){}
                 
             // XSS SHIELD & SMART MARKDOWN PARSER (Translasi Bintang ke Tag HTML Aman)
